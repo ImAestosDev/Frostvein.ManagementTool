@@ -7,7 +7,7 @@ public sealed class LayoutView(AppState state, PanelWindow shell) : PageView
 {
     private static readonly (string Label, FieldType Type)[] Types =
     [
-        ("Text", FieldType.Text), ("Langer Text", FieldType.LongText), ("Zahl", FieldType.Number), ("Gold", FieldType.Gold),
+        ("Text", FieldType.Text), ("Langer Text", FieldType.LongText), ("Zahl", FieldType.Number), ("Gold", FieldType.Gold), ("Euro", FieldType.Euro),
         ("Dauer", FieldType.Minutes), ("Ja/Nein", FieldType.Bool), ("Auswahl", FieldType.Select), ("Formel", FieldType.Formula),
     ];
 
@@ -220,7 +220,7 @@ public sealed class LayoutView(AppState state, PanelWindow shell) : PageView
         var box = Ui.Input(f.Formula, v => { f.Formula = v; Check(); state.Touch(); }, "{Verkauf} - {Einkauf}");
         box.LostFocus += (_, _) => state.Mutate(() => { });
         Check();
-        var names = string.Join("  ", c.Fields.Where(x => x != f && x.Type is FieldType.Gold or FieldType.Number or FieldType.Minutes or FieldType.Formula).Select(x => "{" + x.Name + "}"));
+        var names = string.Join("  ", c.Fields.Where(x => x != f && x.Type is FieldType.Gold or FieldType.Number or FieldType.Euro or FieldType.Minutes or FieldType.Formula).Select(x => "{" + x.Name + "}"));
         return Ui.Col(3, Ui.Labeled("Formel, rechnet mit + - * / und Klammern", box), error, Ui.T("Verfügbar: " + names, 11, "Muted", wrap: true));
     }
 

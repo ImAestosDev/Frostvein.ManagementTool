@@ -2,7 +2,7 @@ using System.Text.Json.Serialization;
 
 namespace Fmt.Core;
 
-public enum FieldType { Text, LongText, Number, Gold, Minutes, Bool, Select, Formula }
+public enum FieldType { Text, LongText, Number, Gold, Minutes, Bool, Select, Formula, Euro }
 public enum Recurrence { Daily, Weekly }
 public enum DockMode { InsideRight, InsideLeft, OutsideRight, OutsideLeft, Free }
 

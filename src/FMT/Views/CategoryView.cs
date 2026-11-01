@@ -16,6 +16,8 @@ public sealed class CategoryView : PageView
     private readonly DockPanel _main = new();
     private readonly StackPanel _head = new() { Margin = new Thickness(14, 12, 12, 8) };
     private readonly TextBlock _summary = Ui.T("", 12, "Muted");
+    private readonly TextBlock _sumLabel = Ui.T("", 13, "Muted");
+    private readonly TextBlock _sumValue = Ui.T("", 22, bold: true);
     private readonly ListBox _list = new();
     private readonly TextBox _search;
     private CheckBox? _openToggle;
@@ -60,6 +62,15 @@ public sealed class CategoryView : PageView
         add.Margin = new Thickness(6, 0, 0, 0);
         var title = Ui.Row(8, Ui.GlyphColored(c.Icon, c.Color, 18), Ui.T(c.Name, 18, bold: true));
         _head.Children.Add(Ui.Cols("*,Auto,Auto,Auto", title, csv, layout, add));
+
+        if (c.Fields.Any(f => f.Id == c.SumFieldId))
+        {
+            (_sumLabel.Parent as Panel)?.Children.Remove(_sumLabel);
+            (_sumValue.Parent as Panel)?.Children.Remove(_sumValue);
+            var sumCard = Ui.Card(Ui.Cols("*,Auto", _sumLabel, _sumValue));
+            sumCard.Margin = new Thickness(0, 10, 0, 0);
+            _head.Children.Add(sumCard);
+        }
 
         var period = Ui.Combo([("Alle", Period.All), ("Heute", Period.Today), ("Woche", Period.Week), ("Monat", Period.Month)], _period, v => { _period = v; FillList(); });
         (string, Sort)[] sorts = c.GoldFieldId != null
@@ -121,11 +132,20 @@ public sealed class CategoryView : PageView
 
         var total = entries.Sum(e => Calc.GoldValue(c, e) ?? 0);
         var goldPart = c.GoldFieldId != null ? $" · Summe {Gold.FormatSigned(total)}" : "";
+        _summary.Text = $"{entries.Count} {(entries.Count == 1 ? "Eintrag" : "Einträge")}{goldPart}";
         var sumField = c.Fields.FirstOrDefault(f => f.Id == c.SumFieldId);
-        var sumPart = sumField != null
-            ? $" · Summe {entries.Sum(e => Calc.Numeric(c, e, sumField) ?? 0).ToString("0.##", new System.Globalization.CultureInfo("de-DE"))} {sumField.Name}"
-            : "";
-        _summary.Text = $"{entries.Count} {(entries.Count == 1 ? "Eintrag" : "Einträge")}{goldPart}{sumPart}";
+        if (sumField != null)
+        {
+            var sum = entries.Sum(e => Calc.Numeric(c, e, sumField) ?? 0);
+            _sumValue.Text = sumField.Type == FieldType.Euro ? Money.Format(sum) : sum.ToString("0.##", new System.Globalization.CultureInfo("de-DE"));
+            _sumLabel.Text = _period switch
+            {
+                Period.Today => "Summe heute",
+                Period.Week => "Summe diese Woche",
+                Period.Month => "Summe dieser Monat",
+                _ => "Gesamtsumme",
+            };
+        }
 
         if (items.Count == 0) ShowEmptyHint();
         else _emptyHint?.SetValue(VisibilityProperty, Visibility.Collapsed);
@@ -195,7 +215,7 @@ public sealed class CategoryView : PageView
         var compact = _state.S.Theme.Compact;
         var titleField = c.Fields.FirstOrDefault(f => f.Type is FieldType.Text or FieldType.Select && Calc.Display(c, e, f).Length > 0);
         var parts = c.Fields
-            .Where(f => f.ShowInList && f != titleField && f.Id != c.GoldFieldId)
+            .Where(f => f.ShowInList && f != titleField && f.Id != c.GoldFieldId && (titleField != null || f.Id != c.SumFieldId))
             .Select(f => (f.Name, Value: Calc.Display(c, e, f)))
             .Where(p => p.Value.Length > 0)
             .Select(p => OneLine(p.Name, p.Value)).ToList();

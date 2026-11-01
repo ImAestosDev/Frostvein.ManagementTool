@@ -250,6 +250,59 @@ public sealed class StoreTests : IDisposable
         Assert.Equal(Store.CurrentVersion, b.Data.Version);
     }
     [Fact]
+    public void MigrationMovesTypedAmountsToEuroField()
+    {
+        var a = new Store(DataFile);
+        a.Load();
+        var old = a.Data.Categories.First(c => c.Name == "NosTaler");
+        var purpose = new FieldDef { Name = "Wofür", Required = true };
+        var count = new FieldDef { Name = "NosTaler", Type = FieldType.Number, Required = true };
+        var note = new FieldDef { Name = "Notiz", Type = FieldType.LongText, ShowInList = false };
+        old.Fields = [purpose, count, note];
+        old.SumFieldId = count.Id;
+        Entry Old(string text) => new() { CategoryId = old.Id, Values = { [purpose.Id] = text, [count.Id] = "160" } };
+        var paid = Old("100.00€");
+        var named = Old("Kostüm");
+        a.Data.Entries.AddRange([paid, named]);
+        a.Data.Version = 5;
+        a.Save();
+
+        var b = new Store(DataFile);
+        b.Load();
+        var c = b.Data.Categories.First(x => x.Name == "NosTaler");
+        Assert.Equal(["Betrag", "Notiz"], c.Fields.Select(f => f.Name));
+        var amount = c.Fields[0];
+        Assert.Equal(amount.Id, c.SumFieldId);
+        var first = b.Data.Entries.First(e => e.Id == paid.Id);
+        Assert.Equal(100m, Calc.Numeric(c, first, amount));
+        Assert.Equal("100,00 €", Calc.Title(c, first));
+        var second = b.Data.Entries.First(e => e.Id == named.Id);
+        Assert.Null(Calc.Numeric(c, second, amount));
+        Assert.Equal("Kostüm", second.Values[note.Id]);
+    }
+
+    [Theory]
+    [InlineData("100", "100")]
+    [InlineData("100.00€", "100")]
+    [InlineData("19,99", "19.99")]
+    [InlineData("19.99 €", "19.99")]
+    [InlineData("1.000", "1000")]
+    [InlineData("1.000,50", "1000.5")]
+    [InlineData("1,000.50", "1000.5")]
+    [InlineData("-5", "-5")]
+    public void ParsesMoney(string text, string expected) =>
+        Assert.Equal(decimal.Parse(expected, System.Globalization.CultureInfo.InvariantCulture), Money.Parse(text));
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("Kostüm")]
+    [InlineData("1,2,3")]
+    public void RejectsBadMoney(string text) => Assert.Null(Money.Parse(text));
+
+    [Fact]
+    public void FormatsMoneyGerman() => Assert.Equal("1.000,50 €", Money.Format(1000.5m));
+
+    [Fact]
     public void MigrationAddsNewTabsOnce()
     {
         var a = new Store(DataFile);
@@ -263,7 +316,7 @@ public sealed class StoreTests : IDisposable
         b.Load();
         Assert.Equal(count + 2, b.Data.Categories.Count);
         var nosTaler = b.Data.Categories.First(c => c.Name == "NosTaler");
-        Assert.Contains(nosTaler.Fields, f => f.Id == nosTaler.SumFieldId && f.Type == FieldType.Number);
+        Assert.Contains(nosTaler.Fields, f => f.Id == nosTaler.SumFieldId && f.Type == FieldType.Euro);
         Assert.False(nosTaler.CountsInTotal);
         b.Save();
 

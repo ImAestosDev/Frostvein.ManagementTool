@@ -7,7 +7,7 @@ namespace Fmt.Core;
 // JSON file with atomic, flushed writes and daily backups, so a BSOD cannot eat the data.
 public sealed class Store
 {
-    public const int CurrentVersion = 5;
+    public const int CurrentVersion = 6;
     private const int UndoLimit = 30;
     private const int BackupsKept = 30;
 
@@ -69,11 +69,50 @@ public sealed class Store
             s.PillX = Settings.DefaultPillX;
             s.PillY = Settings.DefaultPillY;
         }
-        foreach (var tab in new[] { Defaults.NosTaler(), Defaults.Notes() })
+        if (data.Version < 5)
         {
-            if (!data.Categories.Any(c => string.Equals(c.Name, tab.Name, StringComparison.OrdinalIgnoreCase))) data.Categories.Add(tab);
+            foreach (var tab in new[] { Defaults.NosTaler(), Defaults.Notes() })
+            {
+                if (!data.Categories.Any(c => string.Equals(c.Name, tab.Name, StringComparison.OrdinalIgnoreCase))) data.Categories.Add(tab);
+            }
         }
+        if (data.Version < 6) ConvertNosTaler(data);
         data.Version = CurrentVersion;
+    }
+
+    // The tab tracks money now: amounts typed into "Wofür" move to a real euro field.
+    private static void ConvertNosTaler(AppData data)
+    {
+        var category = data.Categories.FirstOrDefault(c => c.Name == "NosTaler");
+        var purpose = category?.Fields.FirstOrDefault(f => f.Name == "Wofür");
+        var count = category?.Fields.FirstOrDefault(f => f.Name == "NosTaler");
+        if (category == null || purpose == null || count == null) return;
+
+        var note = category.Fields.FirstOrDefault(f => f.Type == FieldType.LongText);
+        if (note == null)
+        {
+            note = new FieldDef { Name = "Notiz", Type = FieldType.LongText, ShowInList = false };
+            category.Fields.Add(note);
+        }
+        var amount = new FieldDef { Name = "Betrag", Type = FieldType.Euro, Required = true };
+        foreach (var e in data.Entries.Where(e => e.CategoryId == category.Id))
+        {
+            if (!e.Values.TryGetValue(purpose.Id, out var text) || text.Length == 0) continue;
+            if (Money.Parse(text) is { } euro)
+            {
+                e.Values[amount.Id] = euro.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            }
+            else
+            {
+                // Text that is no amount stays readable in the note.
+                var old = e.Values.GetValueOrDefault(note.Id, "");
+                e.Values[note.Id] = old.Length == 0 ? text : $"{text}\n{old}";
+            }
+        }
+        category.Fields.Remove(purpose);
+        category.Fields.Remove(count);
+        category.Fields.Insert(0, amount);
+        category.SumFieldId = amount.Id;
     }
 
     private static AppData Read(string path) =>

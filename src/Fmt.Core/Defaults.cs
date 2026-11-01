@@ -87,11 +87,11 @@ public static class Defaults
 
     public static Category NosTaler()
     {
-        var amount = F("NosTaler", FieldType.Number, required: true);
+        var amount = F("Betrag", FieldType.Euro, required: true);
         return new Category
         {
             Name = "NosTaler", Icon = "", Color = "#54C7A0", SumFieldId = amount.Id, CountsInTotal = false,
-            Fields = [F("Wofür", FieldType.Text, required: true), amount, F("Notiz", FieldType.LongText, show: false)],
+            Fields = [amount, F("Notiz", FieldType.LongText, show: false)],
         };
     }
 

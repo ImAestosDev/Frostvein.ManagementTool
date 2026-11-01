@@ -123,8 +123,11 @@ internal static class Shots
         Add(raids, 0, ("Raid", "Draco"), ("Runs", "3"), ("Dauer", "45m"), ("Gold", "9kk"));
         var nosTaler = d.Categories.First(c => c.Name == "NosTaler");
         var notes = d.Categories.First(c => c.Name == "Notizen");
-        Add(nosTaler, 0, ("Wofür", "Engelsflügel verkauft"), ("NosTaler", "1500"));
-        Add(nosTaler, 1, ("Wofür", "Kostüm gekauft"), ("NosTaler", "-400"));
+        if (!d.Entries.Any(e => e.CategoryId == nosTaler.Id))
+        {
+            Add(nosTaler, 0, ("Betrag", "100"));
+            Add(nosTaler, 1, ("Betrag", "19.99"));
+        }
         Add(notes, 0, ("Titel", "Markt"), ("Notiz", "Perfektionssteine abends checken\nPreis steigt am Wochenende"));
         for (var i = 1; i < 21; i++)
         {

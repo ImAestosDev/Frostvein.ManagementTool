@@ -176,6 +176,13 @@ public sealed class EntryEditor : Grid
                 _firstFocus ??= minutes;
                 return Ui.Labeled(label, minutes);
 
+            case FieldType.Euro:
+                var shownEuro = decimal.TryParse(raw, NumberStyles.Number, CultureInfo.InvariantCulture, out var euro) ? Money.FormatInput(euro) : raw;
+                var money = Ui.Input(shownEuro, _ => Recalculate(), "z. B. 100 oder 19,99");
+                _inputs.Add(new Input(f, () => money.Text.Length == 0 ? "" : Money.Parse(money.Text)?.ToString(CultureInfo.InvariantCulture), money));
+                _firstFocus ??= money;
+                return Ui.Labeled(label + " in €", money);
+
             default:
                 var shownNumber = decimal.TryParse(raw, NumberStyles.Number, CultureInfo.InvariantCulture, out var n) ? n.ToString("0.##", new CultureInfo("de-DE")) : raw;
                 var number = Ui.Input(shownNumber, _ => Recalculate());

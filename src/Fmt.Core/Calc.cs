@@ -20,7 +20,7 @@ public static class Calc
         if (!entry.Values.TryGetValue(field.Id, out var raw) || string.IsNullOrEmpty(raw)) return null;
         return field.Type switch
         {
-            FieldType.Gold or FieldType.Number or FieldType.Minutes =>
+            FieldType.Gold or FieldType.Number or FieldType.Minutes or FieldType.Euro =>
                 decimal.TryParse(raw, NumberStyles.Number, CultureInfo.InvariantCulture, out var d) ? d : null,
             FieldType.Bool => raw == "1" ? 1m : 0m,
             _ => null,
@@ -58,6 +58,7 @@ public static class Calc
             FieldType.Minutes => int.TryParse(raw, out var m) ? Duration.Format(m) : raw,
             FieldType.Number => decimal.TryParse(raw, NumberStyles.Number, CultureInfo.InvariantCulture, out var n)
                 ? n.ToString("0.##", new CultureInfo("de-DE")) : raw,
+            FieldType.Euro => decimal.TryParse(raw, NumberStyles.Number, CultureInfo.InvariantCulture, out var euro) ? Money.Format(euro) : raw,
             FieldType.Bool => raw == "1" ? "Ja" : "Nein",
             _ => raw,
         };
@@ -71,7 +72,9 @@ public static class Calc
             var text = Display(category, entry, f);
             if (text.Length > 0) return text;
         }
-        return category.Name;
+        var sum = category.Fields.FirstOrDefault(f => f.Id == category.SumFieldId);
+        var amount = sum is null ? "" : Display(category, entry, sum);
+        return amount.Length > 0 ? amount : category.Name;
     }
 }
 
