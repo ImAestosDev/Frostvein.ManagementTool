@@ -9,8 +9,8 @@ public sealed class PillWindow : Window
     private readonly AppState _state;
     private readonly GameWindowTracker _tracker;
     private readonly Action _toggle;
-    private readonly TextBlock _dailies = Ui.T("", 12);
-    private readonly TextBlock _gold = Ui.T("", 12, "Muted", bold: true);
+    private readonly TextBlock _dailies = Ui.T("", 15);
+    private readonly TextBlock _gold = Ui.T("", 15, "Muted", bold: true);
     private nint _hwnd;
     private bool _dragging;
 
@@ -30,9 +30,9 @@ public sealed class PillWindow : Window
         FontFamily = new FontFamily("Segoe UI Variable Text, Segoe UI");
         Title = "FMT Pill";
 
-        var logo = new Image { Source = Ui.Logo, Width = 16, Height = 16 };
-        var content = Ui.Row(8, logo, Ui.T("FMT", 12, bold: true), _dailies, _gold);
-        var root = new Border { Child = content, Padding = new Thickness(9, 4, 11, 4), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(13), Cursor = Cursors.Hand, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
+        var logo = new Image { Source = Ui.Logo, Width = 20, Height = 20 };
+        var content = Ui.Row(8, logo, Ui.T("FMT", 15, bold: true), _dailies, _gold);
+        var root = new Border { Child = content, Padding = new Thickness(12, 6, 14, 6), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(17), Cursor = Cursors.Hand, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
         root.SetResourceReference(Border.BackgroundProperty, "Bg");
         root.SetResourceReference(Border.BorderBrushProperty, "Line");
         root.ToolTip = "Klick: FMT öffnen · Ziehen: verschieben";

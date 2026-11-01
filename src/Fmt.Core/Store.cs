@@ -7,6 +7,7 @@ namespace Fmt.Core;
 // JSON file with atomic, flushed writes and daily backups, so a BSOD cannot eat the data.
 public sealed class Store
 {
+    public const int CurrentVersion = 2;
     private const int UndoLimit = 30;
     private const int BackupsKept = 30;
 
@@ -46,6 +47,7 @@ public sealed class Store
         try
         {
             Data = Read(FilePath);
+            Migrate(Data);
         }
         catch (Exception e) when (e is JsonException or IOException or InvalidDataException)
         {
@@ -55,6 +57,18 @@ public sealed class Store
             Data = RestoreNewest() ?? Defaults.Create(DateOnly.FromDateTime(DateTime.Now));
             LoadWarning = $"Datendatei war beschädigt und wurde aus dem Backup geladen. Kopie: {Path.GetFileName(keep)}";
         }
+    }
+
+    private static void Migrate(AppData data)
+    {
+        if (data.Version >= CurrentVersion) return;
+        // Only a badge the user never moved follows the new default.
+        if (data.Version < 2 && data.Settings.PillX == 0.5 && data.Settings.PillY == 0.004)
+        {
+            data.Settings.PillX = Settings.DefaultPillX;
+            data.Settings.PillY = Settings.DefaultPillY;
+        }
+        data.Version = CurrentVersion;
     }
 
     private static AppData Read(string path) =>

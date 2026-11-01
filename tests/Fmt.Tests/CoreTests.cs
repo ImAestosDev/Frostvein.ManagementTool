@@ -229,6 +229,24 @@ public sealed class StoreTests : IDisposable
         Assert.Equal(count, a.Data.Categories.Count);
     }
 
+
+    [Theory]
+    [InlineData(0.5, 0.004, Settings.DefaultPillX, Settings.DefaultPillY)]
+    [InlineData(0.2, 0.3, 0.2, 0.3)]
+    public void OldBadgePositionMovesOnlyWhenUntouched(double x, double y, double expectedX, double expectedY)
+    {
+        var a = new Store(DataFile);
+        a.Load();
+        a.Data.Version = 1;
+        a.Data.Settings.PillX = x;
+        a.Data.Settings.PillY = y;
+        a.Save();
+        var b = new Store(DataFile);
+        b.Load();
+        Assert.Equal(expectedX, b.Data.Settings.PillX);
+        Assert.Equal(expectedY, b.Data.Settings.PillY);
+        Assert.Equal(Store.CurrentVersion, b.Data.Version);
+    }
     [Fact]
     public void CsvHasExactGoldAndQuotes()
     {

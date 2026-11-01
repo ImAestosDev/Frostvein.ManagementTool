@@ -92,6 +92,9 @@ public sealed class ThemeSettings
 
 public sealed class Settings
 {
+    // Below the game clock in the top right corner.
+    public const double DefaultPillX = 0.9, DefaultPillY = 0.036;
+
     public DockMode Dock { get; set; } = DockMode.InsideRight;
     public double PanelWidth { get; set; } = 600;
     public double PanelHeightPercent { get; set; } = 82;
@@ -100,8 +103,8 @@ public sealed class Settings
     public double FreeWidth { get; set; } = 600;
     public double FreeHeight { get; set; } = 760;
     public bool ShowPill { get; set; } = true;
-    public double PillX { get; set; } = 0.5;
-    public double PillY { get; set; } = 0.004;
+    public double PillX { get; set; } = DefaultPillX;
+    public double PillY { get; set; } = DefaultPillY;
     public bool SidebarIconsOnly { get; set; }
     public string ToggleHotkey { get; set; } = "Ctrl+Alt+F";
     public string QuickHotkey { get; set; } = "Ctrl+Alt+N";
@@ -115,7 +118,7 @@ public sealed class Settings
 
 public sealed class AppData
 {
-    public int Version { get; set; } = 1;
+    public int Version { get; set; } = Store.CurrentVersion;
     public Settings Settings { get; set; } = new();
     public List<string> Characters { get; set; } = ["Main"];
     public List<Category> Categories { get; set; } = [];
