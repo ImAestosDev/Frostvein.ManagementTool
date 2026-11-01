@@ -27,7 +27,9 @@ internal static class Shots
 
         Capture(panel, Path.Combine(outDir, "1-dashboard.png"), () => panel.ShowPage("dashboard", false));
         Capture(panel, Path.Combine(outDir, "2-dailies.png"), () => panel.ShowPage("dailies", false));
+        panel.Height = 1500;
         Capture(panel, Path.Combine(outDir, "2b-landoflife.png"), () => panel.ShowPage("landoflife", false));
+        panel.Height = 1000;
         Capture(panel, Path.Combine(outDir, "3-trading.png"), () => panel.ShowPage("cat:" + trading, false));
         Capture(panel, Path.Combine(outDir, "4-editor.png"), () =>
         {

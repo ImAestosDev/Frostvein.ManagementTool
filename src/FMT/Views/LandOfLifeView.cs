@@ -5,6 +5,25 @@ namespace Fmt.App;
 // Live schedule; uses the PC clock, which matches the in-game clock.
 public sealed class LandOfLifeView : PageView
 {
+    private static readonly (string Difference, string Exp)[] ExpRows =
+    [
+        ("-6 bis +4 Level", "100 % (Volle Erfahrung)"),
+        ("+5 Level", "90 %"),
+        ("+6 Level", "70 %"),
+        ("+7 Level", "50 %"),
+        ("+8 Level", "40 %"),
+        ("+9 Level", "30 %"),
+        ("+10 Level", "20 %"),
+        ("+11 bis +19 Level", "10 %"),
+        ("+20 Level oder mehr", "0 %"),
+        ("-7 Level", "90 %"),
+        ("-8 Level", "70 %"),
+        ("-9 Level", "50 %"),
+        ("-10 Level", "30 %"),
+        ("-11 bis -19 Level", "10 %"),
+        ("-20 Level oder weniger", "0 %"),
+    ];
+
     private readonly AppState _state;
     private readonly ScrollViewer _scroll = new() { VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(20) };
@@ -30,6 +49,8 @@ public sealed class LandOfLifeView : PageView
         Ui.AddTo(col, Ui.T(s.Name, 18, bold: true), 0);
         Ui.AddTo(col, CurrentCard(s, slots[current.SlotIndex], current, now), 10);
         Ui.AddTo(col, TableCard(s, slots, current.SlotIndex), 10);
+        Ui.AddTo(col, Ui.T("EXP nach Level-Unterschied", 14, bold: true), 16);
+        Ui.AddTo(col, ExpCard(), 8);
         _scroll.Content = col;
         _scroll.ScrollToVerticalOffset(offset);
     }
@@ -83,5 +104,26 @@ public sealed class LandOfLifeView : PageView
             col.Children.Add(row);
         }
         return Ui.Card(col, 6);
+    }
+
+    private static FrameworkElement ExpCard()
+    {
+        var col = new StackPanel();
+        col.Children.Add(ExpRow("Level-Unterschied zum Monster", "Erhaltene EXP", "Muted", 12, false));
+        foreach (var (difference, exp) in ExpRows)
+            col.Children.Add(ExpRow(difference, exp, "Ink", 13, true));
+        return Ui.Card(col, 6);
+    }
+
+    private static Border ExpRow(string difference, string exp, string brush, double size, bool line)
+    {
+        var row = new Border
+        {
+            Child = Ui.Cols("*,*", Ui.T(difference, size, brush), Ui.T(exp, size, brush)),
+            Padding = new Thickness(10, 6, 10, 6),
+            BorderThickness = new Thickness(0, line ? 1 : 0, 0, 0),
+        };
+        row.SetResourceReference(Border.BorderBrushProperty, "Line");
+        return row;
     }
 }

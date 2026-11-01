@@ -9,6 +9,7 @@ public partial class App : Application
     private const string SignalName = @"Local\Frostvein.FMT.Toggle";
     private const int HotkeyToggle = 1, HotkeyQuick = 2;
     public const string WaitForArgument = "--wait-for";
+    public const string OpenArgument = "--open";
 
     private Mutex? _mutex;
     private EventWaitHandle? _signal;
@@ -60,6 +61,7 @@ public partial class App : Application
         _panel = new PanelWindow(_state, _tracker);
         _updater = new Updater(_state, () => !_panel.IsOpen, Quit);
         _panel.Updater = _updater;
+        _panel.Quit = Quit;
         _pill = new PillWindow(_state, _tracker, () => _panel.Toggle());
         _tray = new Tray(() => _panel.Toggle(), () => _panel.ShowPage("settings"), Quit);
         _hotkeys = new HotkeyManager();
@@ -85,7 +87,7 @@ public partial class App : Application
         _signalWait = ThreadPool.RegisterWaitForSingleObject(_signal, (_, _) => Dispatcher.BeginInvoke(() => _panel.Toggle()), null, -1, false);
 
         if (store.LoadWarning != null) _panel.ShowAndNotify(store.LoadWarning);
-        if (_tracker.Target == 0 && waitIndex < 0) _panel.Open();
+        if (args.Contains(OpenArgument) || (_tracker.Target == 0 && waitIndex < 0)) _panel.Open();
 #if !DEBUG
         _updater.Start();
 #endif

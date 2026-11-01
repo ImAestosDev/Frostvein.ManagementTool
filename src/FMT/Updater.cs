@@ -22,6 +22,8 @@ public sealed class Updater : IDisposable
     private readonly DispatcherTimer _installTimer = new() { Interval = TimeSpan.FromSeconds(10) };
     private bool _busy;
     private bool _ready;
+    private bool _restartWanted;
+    private bool _leaving;
 
     public string Status { get; private set; } = "Noch nicht geprüft";
     public event Action? StatusChanged;
@@ -100,9 +102,37 @@ public sealed class Updater : IDisposable
         await source.CopyToAsync(target);
     }
 
+    // Button in the panel: installs a waiting or new version, otherwise just restarts.
+    public async Task RestartAsync()
+    {
+        if (_restartWanted) return;
+        _restartWanted = true;
+        try
+        {
+            while (_busy) await Task.Delay(200);
+            await CheckAsync();
+            if (_leaving) return;
+            if (_ready) Install();
+            else Restart();
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException or System.ComponentModel.Win32Exception)
+        {
+            SetStatus($"Neustart fehlgeschlagen: {e.Message}");
+        }
+        finally
+        {
+            _restartWanted = false;
+        }
+    }
+
     private void TryInstall()
     {
-        if (!_ready || !_canRestart()) return;
+        if (_ready && _canRestart()) Install();
+    }
+
+    private void Install()
+    {
+        if (_leaving) return;
         _installTimer.Stop();
         try
         {
@@ -132,10 +162,13 @@ public sealed class Updater : IDisposable
         var args = Environment.GetCommandLineArgs().Skip(1).ToList();
         var wait = args.IndexOf(App.WaitForArgument);
         if (wait >= 0) args.RemoveRange(wait, Math.Min(2, args.Count - wait));
+        args.Remove(App.OpenArgument);
         args.ForEach(start.ArgumentList.Add);
         start.ArgumentList.Add(App.WaitForArgument);
         start.ArgumentList.Add(Environment.ProcessId.ToString());
+        if (_restartWanted) start.ArgumentList.Add(App.OpenArgument);
         Process.Start(start);
+        _leaving = true;
         _quit();
     }
 

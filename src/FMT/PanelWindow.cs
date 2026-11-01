@@ -31,6 +31,7 @@ public sealed class PanelWindow : Window
     public bool FreezePlacement { get; init; }
     public bool IsOpen => _wantOpen;
     public Updater? Updater { get; set; }
+    public Action? Quit { get; set; }
 
     public PanelWindow(AppState state, GameWindowTracker? tracker)
     {
@@ -82,6 +83,12 @@ public sealed class PanelWindow : Window
         DockPanel.SetDock(close, Dock.Right);
         close.Margin = new Thickness(0, 0, 6, 0);
         header.Children.Add(close);
+        var power = Ui.IconBtn(Ui.G.Power, "FMT komplett beenden", () => Quit?.Invoke());
+        DockPanel.SetDock(power, Dock.Right);
+        header.Children.Add(power);
+        var restart = Ui.IconBtn(Ui.G.Restart, "FMT neu starten und Update installieren", RestartApp);
+        DockPanel.SetDock(restart, Dock.Right);
+        header.Children.Add(restart);
         DockPanel.SetDock(_characterHost, Dock.Right);
         _characterHost.VerticalAlignment = VerticalAlignment.Center;
         _characterHost.Margin = new Thickness(0, 0, 6, 0);
@@ -125,6 +132,15 @@ public sealed class PanelWindow : Window
         root.SetResourceReference(Border.BorderBrushProperty, "Line");
         root.SetResourceReference(Border.CornerRadiusProperty, "Corner");
         return root;
+    }
+
+    private async void RestartApp()
+    {
+        if (Updater == null) return;
+        ShowToast("Suche Update und starte neu …", false);
+        await Updater.RestartAsync();
+        // Only reached with a visible result when the restart did not happen.
+        ShowToast(Updater.Status, false);
     }
 
     private void BuildCharacterPicker()
