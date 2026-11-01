@@ -177,6 +177,7 @@ public sealed class LayoutView(AppState state, PanelWindow shell) : PageView
         {
             c.Fields.Remove(f);
             if (c.GoldFieldId == f.Id) c.GoldFieldId = null;
+            if (c.SumFieldId == f.Id) c.SumFieldId = null;
             foreach (var other in c.Fields.Where(x => x.PrefillFrom == f.Id)) other.PrefillFrom = null;
         }, $"Feld \"{f.Name}\" gelöscht"), 12);
 

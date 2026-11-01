@@ -11,7 +11,7 @@ public static class Defaults
     public static AppData Create(DateOnly today)
     {
         var data = new AppData();
-        data.Categories.AddRange([Trading(), Farming(), Raids(), Crafting(), Events(), GoldBook()]);
+        data.Categories.AddRange([Trading(), Farming(), Raids(), Crafting(), Events(), GoldBook(), NosTaler(), Notes()]);
         foreach (var (name, group, recurrence) in new[]
         {
             ("Tagesquests", "Quests", Recurrence.Daily),
@@ -84,6 +84,22 @@ public static class Defaults
             Fields = [F("Event", FieldType.Text, required: true), F("Belohnung", FieldType.Text), gold, F("Notiz", FieldType.LongText, show: false)],
         };
     }
+
+    public static Category NosTaler()
+    {
+        var amount = F("NosTaler", FieldType.Number, required: true);
+        return new Category
+        {
+            Name = "NosTaler", Icon = "", Color = "#54C7A0", SumFieldId = amount.Id, CountsInTotal = false,
+            Fields = [F("Wofür", FieldType.Text, required: true), amount, F("Notiz", FieldType.LongText, show: false)],
+        };
+    }
+
+    public static Category Notes() => new()
+    {
+        Name = "Notizen", Icon = "", Color = "#8EA3B5", CountsInTotal = false,
+        Fields = [F("Titel", FieldType.Text, required: true), F("Notiz", FieldType.LongText)],
+    };
 
     private static Category GoldBook()
     {

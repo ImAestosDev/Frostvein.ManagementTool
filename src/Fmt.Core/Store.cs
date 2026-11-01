@@ -7,7 +7,7 @@ namespace Fmt.Core;
 // JSON file with atomic, flushed writes and daily backups, so a BSOD cannot eat the data.
 public sealed class Store
 {
-    public const int CurrentVersion = 4;
+    public const int CurrentVersion = 5;
     private const int UndoLimit = 30;
     private const int BackupsKept = 30;
 
@@ -68,6 +68,10 @@ public sealed class Store
         {
             s.PillX = Settings.DefaultPillX;
             s.PillY = Settings.DefaultPillY;
+        }
+        foreach (var tab in new[] { Defaults.NosTaler(), Defaults.Notes() })
+        {
+            if (!data.Categories.Any(c => string.Equals(c.Name, tab.Name, StringComparison.OrdinalIgnoreCase))) data.Categories.Add(tab);
         }
         data.Version = CurrentVersion;
     }

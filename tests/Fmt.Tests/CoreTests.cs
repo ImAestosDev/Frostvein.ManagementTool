@@ -250,6 +250,29 @@ public sealed class StoreTests : IDisposable
         Assert.Equal(Store.CurrentVersion, b.Data.Version);
     }
     [Fact]
+    public void MigrationAddsNewTabsOnce()
+    {
+        var a = new Store(DataFile);
+        a.Load();
+        a.Data.Version = 4;
+        a.Data.Categories.RemoveAll(c => c.Name is "NosTaler" or "Notizen");
+        var count = a.Data.Categories.Count;
+        a.Save();
+
+        var b = new Store(DataFile);
+        b.Load();
+        Assert.Equal(count + 2, b.Data.Categories.Count);
+        var nosTaler = b.Data.Categories.First(c => c.Name == "NosTaler");
+        Assert.Contains(nosTaler.Fields, f => f.Id == nosTaler.SumFieldId && f.Type == FieldType.Number);
+        Assert.False(nosTaler.CountsInTotal);
+        b.Save();
+
+        var again = new Store(DataFile);
+        again.Load();
+        Assert.Equal(count + 2, again.Data.Categories.Count);
+    }
+
+    [Fact]
     public void CsvHasExactGoldAndQuotes()
     {
         var d = Defaults.Create(new DateOnly(2026, 11, 2));

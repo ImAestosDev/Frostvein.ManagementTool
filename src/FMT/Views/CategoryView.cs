@@ -62,7 +62,10 @@ public sealed class CategoryView : PageView
         _head.Children.Add(Ui.Cols("*,Auto,Auto,Auto", title, csv, layout, add));
 
         var period = Ui.Combo([("Alle", Period.All), ("Heute", Period.Today), ("Woche", Period.Week), ("Monat", Period.Month)], _period, v => { _period = v; FillList(); });
-        var sort = Ui.Combo([("Neueste", Sort.Newest), ("Älteste", Sort.Oldest), ("Gold hoch", Sort.GoldDesc), ("Gold tief", Sort.GoldAsc)], _sort, v => { _sort = v; FillList(); });
+        (string, Sort)[] sorts = c.GoldFieldId != null
+            ? [("Neueste", Sort.Newest), ("Älteste", Sort.Oldest), ("Gold hoch", Sort.GoldDesc), ("Gold tief", Sort.GoldAsc)]
+            : [("Neueste", Sort.Newest), ("Älteste", Sort.Oldest)];
+        var sort = Ui.Combo(sorts, _sort, v => { _sort = v; FillList(); });
         period.Margin = new Thickness(6, 0, 0, 0);
         sort.Margin = new Thickness(6, 0, 0, 0);
         var filters = Ui.Cols("*,84,96", _search, period, sort);
@@ -118,7 +121,11 @@ public sealed class CategoryView : PageView
 
         var total = entries.Sum(e => Calc.GoldValue(c, e) ?? 0);
         var goldPart = c.GoldFieldId != null ? $" · Summe {Gold.FormatSigned(total)}" : "";
-        _summary.Text = $"{entries.Count} {(entries.Count == 1 ? "Eintrag" : "Einträge")}{goldPart}";
+        var sumField = c.Fields.FirstOrDefault(f => f.Id == c.SumFieldId);
+        var sumPart = sumField != null
+            ? $" · Summe {entries.Sum(e => Calc.Numeric(c, e, sumField) ?? 0).ToString("0.##", new System.Globalization.CultureInfo("de-DE"))} {sumField.Name}"
+            : "";
+        _summary.Text = $"{entries.Count} {(entries.Count == 1 ? "Eintrag" : "Einträge")}{goldPart}{sumPart}";
 
         if (items.Count == 0) ShowEmptyHint();
         else _emptyHint?.SetValue(VisibilityProperty, Visibility.Collapsed);
@@ -191,7 +198,7 @@ public sealed class CategoryView : PageView
             .Where(f => f.ShowInList && f != titleField && f.Id != c.GoldFieldId)
             .Select(f => (f.Name, Value: Calc.Display(c, e, f)))
             .Where(p => p.Value.Length > 0)
-            .Select(p => $"{p.Name} {p.Value}").ToList();
+            .Select(p => OneLine(p.Name, p.Value)).ToList();
         if (_state.Data.Characters.Count > 1 && e.Character.Length > 0) parts.Insert(0, e.Character);
 
         var left = Ui.Col(1, Ui.T(Calc.Title(c, e), 13, bold: true, trim: true));
@@ -218,6 +225,10 @@ public sealed class CategoryView : PageView
         row.MouseLeftButtonUp += (_, _) => OpenEditor(e);
         return row;
     }
+
+    // Long notes stay on one row in the list.
+    private static string OneLine(string name, string value) =>
+        $"{name} {value.ReplaceLineEndings(" ")}";
 
     private static FrameworkElement OpenBadge()
     {

@@ -36,6 +36,9 @@ public sealed class Category
     public bool Visible { get; set; } = true;
     public string? GoldFieldId { get; set; }
 
+    // Number field added up in the page summary, e.g. NosTaler.
+    public string? SumFieldId { get; set; }
+
     // Off for ledgers that would double count activity gold.
     public bool CountsInTotal { get; set; } = true;
     public List<FieldDef> Fields { get; set; } = [];

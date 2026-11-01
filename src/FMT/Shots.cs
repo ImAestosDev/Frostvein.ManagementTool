@@ -36,6 +36,8 @@ internal static class Shots
             panel.ShowPage("cat:" + farming, false);
             ((CategoryView)panel.CurrentPage!).OpenEditor(null);
         });
+        Capture(panel, Path.Combine(outDir, "4b-nostaler.png"), () => panel.ShowPage("cat:" + store.Data.Categories.First(c => c.Name == "NosTaler").Id, false));
+        Capture(panel, Path.Combine(outDir, "4c-notes.png"), () => panel.ShowPage("cat:" + store.Data.Categories.First(c => c.Name == "Notizen").Id, false));
         Capture(panel, Path.Combine(outDir, "5-layout.png"), () => panel.ShowPage("layout", false));
         Capture(panel, Path.Combine(outDir, "6-settings.png"), () => panel.ShowPage("settings", false));
         Capture(panel, Path.Combine(outDir, "7-light.png"), () =>
@@ -119,6 +121,11 @@ internal static class Shots
         Add(trading, 3, ("Item", "Rune A"), ("Menge", "5"), ("Einkauf", "8,5kk"));
         Add(farming, 0, ("Spot", "Land des Todes"), ("Dauer", "1h 30m"), ("Gold", "14kk"), ("Drops", "3x Seele"));
         Add(raids, 0, ("Raid", "Draco"), ("Runs", "3"), ("Dauer", "45m"), ("Gold", "9kk"));
+        var nosTaler = d.Categories.First(c => c.Name == "NosTaler");
+        var notes = d.Categories.First(c => c.Name == "Notizen");
+        Add(nosTaler, 0, ("Wofür", "Engelsflügel verkauft"), ("NosTaler", "1500"));
+        Add(nosTaler, 1, ("Wofür", "Kostüm gekauft"), ("NosTaler", "-400"));
+        Add(notes, 0, ("Titel", "Markt"), ("Notiz", "Perfektionssteine abends checken\nPreis steigt am Wochenende"));
         for (var i = 1; i < 21; i++)
         {
             if (i % 5 == 0) continue;
