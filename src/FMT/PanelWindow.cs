@@ -146,13 +146,13 @@ public sealed class PanelWindow : Window
     {
         _nav.Children.Clear();
         var iconsOnly = _state.S.SidebarIconsOnly;
-        _nav.Width = iconsOnly ? 40 : 148;
+        _nav.Width = iconsOnly ? 40 : 158;
 
         void Add(string key, string glyph, string label, string? color = null)
         {
             var icon = color == null ? Ui.Glyph(glyph, 15) : Ui.GlyphColored(glyph, color, 15);
             icon.Width = 18;
-            UIElement content = iconsOnly ? icon : Ui.Row(9, icon, Ui.T(label, 13, trim: true));
+            UIElement content = iconsOnly ? icon : Ui.Cols("27,*", icon, Ui.T(label, 13, trim: true));
             var b = new RadioButton
             {
                 Style = (Style)Application.Current.Resources["Nav"],
@@ -167,6 +167,7 @@ public sealed class PanelWindow : Window
 
         Add("dashboard", Ui.G.Home, "Übersicht");
         Add("dailies", Ui.G.Check, "Dailies");
+        if (_state.S.LandOfLife.Visible) Add("landoflife", Ui.G.Clock, _state.S.LandOfLife.Name);
         var sep = new Border { Height = 1, Margin = new Thickness(4, 6, 4, 6) };
         sep.SetResourceReference(Border.BackgroundProperty, "Line");
         _nav.Children.Add(sep);
@@ -202,6 +203,7 @@ public sealed class PanelWindow : Window
     {
         if (key == "dashboard") return new DashboardView(_state, this);
         if (key == "dailies") return new DailiesView(_state);
+        if (key == "landoflife" && _state.S.LandOfLife.Visible) return new LandOfLifeView(_state);
         if (key == "settings") return new SettingsView(_state, () => HotkeysChanged?.Invoke(), Updater);
         if (key == "layout") return new LayoutView(_state, this);
         if (key.StartsWith("cat:", StringComparison.Ordinal) && _state.Data.FindCategory(key[4..]) != null)

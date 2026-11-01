@@ -18,6 +18,7 @@ public sealed class SettingsView(AppState state, Action hotkeysChanged, Updater?
         Ui.AddTo(col, LookCard(), 10);
         Ui.AddTo(col, ColorsCard(), 10);
         Ui.AddTo(col, DashboardCard(), 10);
+        Ui.AddTo(col, LandOfLifeCard(), 10);
         Ui.AddTo(col, HotkeyCard(), 10);
         Ui.AddTo(col, CharactersCard(), 10);
         Ui.AddTo(col, DataCard(), 10);
@@ -154,6 +155,30 @@ public sealed class SettingsView(AppState state, Action hotkeysChanged, Updater?
     }
 
     private static void Swap(List<string> list, int a, int b) => (list[a], list[b]) = (list[b], list[a]);
+
+    private FrameworkElement LandOfLifeCard()
+    {
+        var s = state.S.LandOfLife;
+        TextBox Minutes(int value, Action<int> set, int min, int max)
+        {
+            var box = Ui.Input(value.ToString());
+            box.TextChanged += (_, _) =>
+            {
+                if (!int.TryParse(box.Text, out var v) || v < min || v > max) return;
+                set(v);
+                state.Touch();
+            };
+            return box;
+        }
+        var name = Ui.Input(s.Name, v => { if (v.Trim().Length == 0) return; s.Name = v.Trim(); state.TouchStructure(); });
+        var label = Ui.Input(s.MarkerLabel, v => { s.MarkerLabel = v; state.Touch(); });
+        var length = Ui.Labeled("Fensterlänge in Minuten", Minutes(s.WindowMinutes, v => s.WindowMinutes = v, 15, 1440));
+        var offset = Ui.Labeled("Icon-Zeit nach Fensterstart, Minuten", Minutes(s.MarkerOffsetMinutes, v => s.MarkerOffsetMinutes = v, 0, 1439));
+        return Section("Land der Lebenden",
+            Ui.Check("Tab anzeigen", s.Visible, v => { s.Visible = v; state.TouchStructure(); }),
+            new UniformRow(8, Ui.Labeled("Name", name), Ui.Labeled("Name der Icon-Zeit", label)),
+            new UniformRow(8, length, offset));
+    }
 
     private FrameworkElement HotkeyCard()
     {

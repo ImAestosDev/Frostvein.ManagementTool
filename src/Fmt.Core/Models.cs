@@ -104,6 +104,7 @@ public sealed class Settings
     public double FreeHeight { get; set; } = 760;
     public bool ShowPill { get; set; } = true;
     public bool AutoUpdate { get; set; } = true;
+    public LandOfLifeSettings LandOfLife { get; set; } = new();
     public double PillX { get; set; } = DefaultPillX;
     public double PillY { get; set; } = DefaultPillY;
     public bool SidebarIconsOnly { get; set; }

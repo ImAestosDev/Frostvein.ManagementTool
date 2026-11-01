@@ -321,3 +321,56 @@ public class UpdateFeedTests
         finally { File.Delete(file); }
     }
 }
+
+public class WindowScheduleTests
+{
+    private static readonly List<ScheduleSlot> Table = WindowSchedule.Slots(120, 60);
+
+    [Fact]
+    public void MatchesInGameTable()
+    {
+        Assert.Equal(12, Table.Count);
+        Assert.Equal("0:00", WindowSchedule.Clock(Table[0].StartMinute));
+        Assert.Equal("1:00", WindowSchedule.Clock(Table[0].MarkerMinute));
+        Assert.Equal("22:00", WindowSchedule.Clock(Table[11].StartMinute));
+        Assert.Equal("0:00", WindowSchedule.Clock(Table[11].EndMinute));
+        Assert.Equal("23:00", WindowSchedule.Clock(Table[11].MarkerMinute));
+    }
+
+    [Fact]
+    public void FindsCurrentWindowAndNextMarker()
+    {
+        var s = WindowSchedule.StateAt(new DateTime(2026, 11, 1, 14, 30, 0), Table);
+        Assert.Equal(7, s.SlotIndex);
+        Assert.Equal(TimeSpan.FromMinutes(90), s.LeftInSlot);
+        Assert.Equal(0.25, s.SlotProgress);
+        Assert.Equal(new DateTime(2026, 11, 1, 15, 0, 0), s.NextMarker);
+    }
+
+    [Fact]
+    public void MarkerRollsOverMidnight()
+    {
+        var s = WindowSchedule.StateAt(new DateTime(2026, 11, 1, 23, 30, 0), Table);
+        Assert.Equal(11, s.SlotIndex);
+        Assert.Equal(new DateTime(2026, 11, 2, 1, 0, 0), s.NextMarker);
+    }
+
+    [Fact]
+    public void ExactBoundariesBelongToTheNextWindow()
+    {
+        Assert.Equal(1, WindowSchedule.StateAt(new DateTime(2026, 11, 1, 2, 0, 0), Table).SlotIndex);
+        Assert.Equal(new DateTime(2026, 11, 1, 3, 0, 0), WindowSchedule.StateAt(new DateTime(2026, 11, 1, 1, 0, 0), Table).NextMarker);
+    }
+
+    [Theory]
+    [InlineData(0, 0)]
+    [InlineData(5000, 9000)]
+    [InlineData(7, 50)]
+    public void BadSettingsStillCoverTheDay(int window, int offset)
+    {
+        var slots = WindowSchedule.Slots(window, offset);
+        Assert.Equal(0, slots[0].StartMinute);
+        Assert.Equal(1440, slots[^1].EndMinute);
+        Assert.All(slots, x => Assert.InRange(x.MarkerMinute, x.StartMinute, x.EndMinute - 1));
+    }
+}
