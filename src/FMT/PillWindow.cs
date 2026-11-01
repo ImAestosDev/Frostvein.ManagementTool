@@ -7,7 +7,8 @@ namespace Fmt.App;
 public sealed class PillWindow : Window
 {
     // Same width as the game clock it sits under.
-    private const double ClockWidthPixels = 149;
+    public const double ClockWidthPixels = 149;
+    private const double LogoHeight = 16;
 
     private readonly AppState _state;
     private readonly GameWindowTracker _tracker;
@@ -31,12 +32,7 @@ public sealed class PillWindow : Window
         FontFamily = new FontFamily("Segoe UI Variable Text, Segoe UI");
         Title = "FMT Pill";
 
-        var logo = new Image { Source = Ui.Logo, Width = 18, Height = 18 };
-        var content = Ui.Row(7, logo, Ui.T("FMT", 14, bold: true));
-        content.HorizontalAlignment = HorizontalAlignment.Center;
-        var root = new Border { Child = content, Padding = new Thickness(6, 4, 6, 4), BorderThickness = new Thickness(1), Cursor = Cursors.Hand, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
-        root.SetResourceReference(Border.BackgroundProperty, "Bg");
-        root.SetResourceReference(Border.BorderBrushProperty, "Line");
+        var root = BuildButton();
         root.ToolTip = "Klick: FMT öffnen · Ziehen: verschieben";
         root.MouseEnter += (_, _) =>
         {
@@ -58,6 +54,21 @@ public sealed class PillWindow : Window
             Native.AddExStyle(_hwnd, Native.WS_EX_TOOLWINDOW | Native.WS_EX_NOACTIVATE);
         };
         SizeChanged += (_, _) => Place();
+    }
+
+    public static Border BuildButton()
+    {
+        var logo = new Image { Source = Ui.Logo, Height = LogoHeight, VerticalAlignment = VerticalAlignment.Center };
+        RenderOptions.SetBitmapScalingMode(logo, BitmapScalingMode.HighQuality);
+        var label = Ui.T("FMT", 14, bold: true);
+        // Capitals sit below the line box center, this centers them visually.
+        label.RenderTransform = new TranslateTransform(0, -1);
+        var content = Ui.Row(7, logo, label);
+        content.HorizontalAlignment = HorizontalAlignment.Center;
+        var root = new Border { Child = content, Padding = new Thickness(6, 4, 6, 4), BorderThickness = new Thickness(1), Cursor = Cursors.Hand, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
+        root.SetResourceReference(Border.BackgroundProperty, "Bg");
+        root.SetResourceReference(Border.BorderBrushProperty, "Line");
+        return root;
     }
 
     public void Refresh()

@@ -16,6 +16,7 @@
     <Using Remove="System.Windows.Forms" />
     <Using Remove="System.Drawing" />
     <Resource Include="Assets\fmt.ico" />
+    <Resource Include="Assets\logo.png" />
     <ProjectReference Include="..\Fmt.Core\Fmt.Core.csproj" />
   </ItemGroup>
 </Project>

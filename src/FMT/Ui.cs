@@ -207,7 +207,7 @@ public static class Ui
         return t;
     }
 
-    public static ImageSource Logo => _logo ??= BitmapFrame.Create(new Uri("pack://application:,,,/Assets/fmt.ico"));
+    public static ImageSource Logo => _logo ??= BitmapFrame.Create(new Uri("pack://application:,,,/Assets/logo.png"));
     private static ImageSource? _logo;
 
     public static T? FindChild<T>(DependencyObject root) where T : DependencyObject

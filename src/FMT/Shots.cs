@@ -42,6 +42,7 @@ internal static class Shots
             ThemeManager.Apply(state.S.Theme);
             panel.ShowPage("dashboard", false);
         });
+        RenderButton(Path.Combine(outDir, "button.png"));
         Application.Current.Shutdown();
     }
 
@@ -59,6 +60,21 @@ internal static class Shots
         }
         bmp.Render(backing);
         bmp.Render(root);
+        var png = new PngBitmapEncoder();
+        png.Frames.Add(BitmapFrame.Create(bmp));
+        using var fs = File.Create(file);
+        png.Save(fs);
+    }
+
+    private static void RenderButton(string file)
+    {
+        var button = PillWindow.BuildButton();
+        button.Width = PillWindow.ClockWidthPixels;
+        button.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        button.Arrange(new Rect(button.DesiredSize));
+        button.UpdateLayout();
+        var bmp = new RenderTargetBitmap((int)button.ActualWidth, (int)button.ActualHeight, 96, 96, PixelFormats.Pbgra32);
+        bmp.Render(button);
         var png = new PngBitmapEncoder();
         png.Frames.Add(BitmapFrame.Create(bmp));
         using var fs = File.Create(file);

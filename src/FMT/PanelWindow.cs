@@ -86,7 +86,8 @@ public sealed class PanelWindow : Window
         _characterHost.VerticalAlignment = VerticalAlignment.Center;
         _characterHost.Margin = new Thickness(0, 0, 6, 0);
         header.Children.Add(_characterHost);
-        var logo = new Image { Source = Ui.Logo, Width = 20, Height = 20, Margin = new Thickness(12, 0, 8, 0) };
+        var logo = new Image { Source = Ui.Logo, Height = 18, Margin = new Thickness(12, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
+        RenderOptions.SetBitmapScalingMode(logo, BitmapScalingMode.HighQuality);
         header.Children.Add(Ui.Row(0, logo, Ui.T("FMT", 14, bold: true), Ui.T("  Frostvein Management", 12, "Muted", trim: true)));
 
         var side = new Border { Child = _nav, Padding = new Thickness(8, 4, 8, 8), BorderThickness = new Thickness(0, 0, 1, 0) };
