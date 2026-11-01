@@ -93,7 +93,7 @@ public sealed class ThemeSettings
 public sealed class Settings
 {
     // Below the game clock in the top right corner.
-    public const double DefaultPillX = 0.9, DefaultPillY = 0.036;
+    public const double DefaultPillX = 0.9072, DefaultPillY = 0.0365;
 
     public DockMode Dock { get; set; } = DockMode.InsideRight;
     public double PanelWidth { get; set; } = 600;

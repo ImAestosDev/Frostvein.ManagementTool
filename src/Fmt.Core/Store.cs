@@ -7,7 +7,7 @@ namespace Fmt.Core;
 // JSON file with atomic, flushed writes and daily backups, so a BSOD cannot eat the data.
 public sealed class Store
 {
-    public const int CurrentVersion = 2;
+    public const int CurrentVersion = 4;
     private const int UndoLimit = 30;
     private const int BackupsKept = 30;
 
@@ -63,10 +63,11 @@ public sealed class Store
     {
         if (data.Version >= CurrentVersion) return;
         // Only a badge the user never moved follows the new default.
-        if (data.Version < 2 && data.Settings.PillX == 0.5 && data.Settings.PillY == 0.004)
+        var s = data.Settings;
+        if ((s.PillX, s.PillY) is (0.5, 0.004) or (0.9, 0.036) or (0.9072, 0.0327))
         {
-            data.Settings.PillX = Settings.DefaultPillX;
-            data.Settings.PillY = Settings.DefaultPillY;
+            s.PillX = Settings.DefaultPillX;
+            s.PillY = Settings.DefaultPillY;
         }
         data.Version = CurrentVersion;
     }

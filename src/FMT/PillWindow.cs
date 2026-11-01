@@ -3,14 +3,15 @@ using System.Windows.Interop;
 
 namespace Fmt.App;
 
-// Small always-on badge inside the game window; click opens the panel, drag moves it.
+// Small button under the game clock; click opens the panel, drag moves it.
 public sealed class PillWindow : Window
 {
+    // Same width as the game clock it sits under.
+    private const double ClockWidthPixels = 149;
+
     private readonly AppState _state;
     private readonly GameWindowTracker _tracker;
     private readonly Action _toggle;
-    private readonly TextBlock _dailies = Ui.T("", 15);
-    private readonly TextBlock _gold = Ui.T("", 15, "Muted", bold: true);
     private nint _hwnd;
     private bool _dragging;
 
@@ -30,14 +31,26 @@ public sealed class PillWindow : Window
         FontFamily = new FontFamily("Segoe UI Variable Text, Segoe UI");
         Title = "FMT Pill";
 
-        var logo = new Image { Source = Ui.Logo, Width = 20, Height = 20 };
-        var content = Ui.Row(8, logo, Ui.T("FMT", 15, bold: true), _dailies, _gold);
-        var root = new Border { Child = content, Padding = new Thickness(12, 6, 14, 6), BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(17), Cursor = Cursors.Hand, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
+        var logo = new Image { Source = Ui.Logo, Width = 18, Height = 18 };
+        var content = Ui.Row(7, logo, Ui.T("FMT", 14, bold: true));
+        content.HorizontalAlignment = HorizontalAlignment.Center;
+        var root = new Border { Child = content, Padding = new Thickness(6, 4, 6, 4), BorderThickness = new Thickness(1), Cursor = Cursors.Hand, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
         root.SetResourceReference(Border.BackgroundProperty, "Bg");
         root.SetResourceReference(Border.BorderBrushProperty, "Line");
         root.ToolTip = "Klick: FMT öffnen · Ziehen: verschieben";
+        root.MouseEnter += (_, _) =>
+        {
+            root.SetResourceReference(Border.BackgroundProperty, "Surface2");
+            root.SetResourceReference(Border.BorderBrushProperty, "Accent");
+        };
+        root.MouseLeave += (_, _) =>
+        {
+            root.SetResourceReference(Border.BackgroundProperty, "Bg");
+            root.SetResourceReference(Border.BorderBrushProperty, "Line");
+        };
         root.MouseLeftButtonDown += OnPress;
         Content = root;
+        Loaded += (_, _) => root.Width = ClockWidthPixels / VisualTreeHelper.GetDpi(this).DpiScaleX;
 
         SourceInitialized += (_, _) =>
         {
@@ -47,15 +60,8 @@ public sealed class PillWindow : Window
         SizeChanged += (_, _) => Place();
     }
 
-
     public void Refresh()
     {
-        var (done, total) = Stats.Progress(_state.Data, _state.Character, _state.Today, Recurrence.Daily);
-        _dailies.Text = total > 0 ? $"{done}/{total}" : "";
-        var net = Stats.Net(_state.Data, _state.Today, _state.Today);
-        _gold.Text = Gold.FormatSigned(net);
-        _gold.SetResourceReference(TextBlock.ForegroundProperty, net > 0 ? "Positive" : net < 0 ? "Negative" : "Muted");
-
         var wanted = _state.S.ShowPill && _tracker.ShowOverlay;
         if (wanted && !IsVisible) Show();
         else if (!wanted && IsVisible) Hide();

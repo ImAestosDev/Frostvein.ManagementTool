@@ -232,6 +232,8 @@ public sealed class StoreTests : IDisposable
 
     [Theory]
     [InlineData(0.5, 0.004, Settings.DefaultPillX, Settings.DefaultPillY)]
+    [InlineData(0.9, 0.036, Settings.DefaultPillX, Settings.DefaultPillY)]
+    [InlineData(0.9072, 0.0327, Settings.DefaultPillX, Settings.DefaultPillY)]
     [InlineData(0.2, 0.3, 0.2, 0.3)]
     public void OldBadgePositionMovesOnlyWhenUntouched(double x, double y, double expectedX, double expectedY)
     {
