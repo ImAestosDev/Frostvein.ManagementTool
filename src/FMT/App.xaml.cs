@@ -8,6 +8,7 @@ public partial class App : Application
     private const string MutexName = @"Local\Frostvein.FMT";
     private const string SignalName = @"Local\Frostvein.FMT.Toggle";
     private const int HotkeyToggle = 1, HotkeyQuick = 2;
+    public const string WaitForArgument = "--wait-for";
 
     private Mutex? _mutex;
     private EventWaitHandle? _signal;
@@ -18,6 +19,7 @@ public partial class App : Application
     private PanelWindow? _panel;
     private PillWindow? _pill;
     private AppState? _state;
+    private Updater? _updater;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -34,6 +36,10 @@ public partial class App : Application
             return;
         }
 #endif
+
+        // After an update the old process is still shutting down and holds the instance lock.
+        var waitIndex = Array.IndexOf(args, WaitForArgument);
+        if (waitIndex >= 0 && waitIndex + 1 < args.Length && int.TryParse(args[waitIndex + 1], out var oldPid)) WaitForExit(oldPid);
 
         // A second start just toggles the running instance.
         _mutex = new Mutex(true, MutexName, out var isFirst);
@@ -52,6 +58,8 @@ public partial class App : Application
 
         _tracker = new GameWindowTracker();
         _panel = new PanelWindow(_state, _tracker);
+        _updater = new Updater(_state, () => !_panel.IsOpen, Quit);
+        _panel.Updater = _updater;
         _pill = new PillWindow(_state, _tracker, () => _panel.Toggle());
         _tray = new Tray(() => _panel.Toggle(), () => _panel.ShowPage("settings"), Quit);
         _hotkeys = new HotkeyManager();
@@ -77,9 +85,18 @@ public partial class App : Application
         _signalWait = ThreadPool.RegisterWaitForSingleObject(_signal, (_, _) => Dispatcher.BeginInvoke(() => _panel.Toggle()), null, -1, false);
 
         if (store.LoadWarning != null) _panel.ShowAndNotify(store.LoadWarning);
-        if (_tracker.Target == 0) _panel.Open();
+        if (_tracker.Target == 0 && waitIndex < 0) _panel.Open();
+#if !DEBUG
+        _updater.Start();
+#endif
     }
 
+
+    private static void WaitForExit(int pid)
+    {
+        try { System.Diagnostics.Process.GetProcessById(pid).WaitForExit(5000); }
+        catch (ArgumentException) { }
+    }
 
     private void OnGameMoved()
     {
@@ -107,6 +124,7 @@ public partial class App : Application
     {
         _state?.Flush();
         _signalWait?.Unregister(null);
+        _updater?.Dispose();
         _hotkeys?.Dispose();
         _tracker?.Dispose();
         _tray?.Dispose();

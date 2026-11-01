@@ -29,6 +29,8 @@ public sealed class PanelWindow : Window
     public string PageKey => _pageKey;
     public PageView? CurrentPage => _page;
     public bool FreezePlacement { get; init; }
+    public bool IsOpen => _wantOpen;
+    public Updater? Updater { get; set; }
 
     public PanelWindow(AppState state, GameWindowTracker? tracker)
     {
@@ -200,7 +202,7 @@ public sealed class PanelWindow : Window
     {
         if (key == "dashboard") return new DashboardView(_state, this);
         if (key == "dailies") return new DailiesView(_state);
-        if (key == "settings") return new SettingsView(_state, () => HotkeysChanged?.Invoke());
+        if (key == "settings") return new SettingsView(_state, () => HotkeysChanged?.Invoke(), Updater);
         if (key == "layout") return new LayoutView(_state, this);
         if (key.StartsWith("cat:", StringComparison.Ordinal) && _state.Data.FindCategory(key[4..]) != null)
             return new CategoryView(_state, key[4..], this);

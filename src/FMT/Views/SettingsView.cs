@@ -4,7 +4,7 @@ using System.Windows.Controls.Primitives;
 
 namespace Fmt.App;
 
-public sealed class SettingsView(AppState state, Action hotkeysChanged) : PageView
+public sealed class SettingsView(AppState state, Action hotkeysChanged, Updater? updater) : PageView
 {
     private readonly ScrollViewer _scroll = new() { VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
 
@@ -21,6 +21,7 @@ public sealed class SettingsView(AppState state, Action hotkeysChanged) : PageVi
         Ui.AddTo(col, HotkeyCard(), 10);
         Ui.AddTo(col, CharactersCard(), 10);
         Ui.AddTo(col, DataCard(), 10);
+        Ui.AddTo(col, UpdateCard(), 10);
         _scroll.Content = col;
         _scroll.ScrollToVerticalOffset(offset);
     }
@@ -227,6 +228,19 @@ public sealed class SettingsView(AppState state, Action hotkeysChanged) : PageVi
             foreach (var c in d.Checks.Where(c => c.Character == oldName)) c.Character = newName;
             if (d.Settings.ActiveCharacter == oldName) d.Settings.ActiveCharacter = newName;
         });
+    }
+
+    private FrameworkElement? UpdateCard()
+    {
+        if (updater == null) return null;
+        var status = Ui.T(updater.Status, 12, "Muted", wrap: true);
+        void Show() => status.Text = updater.Status;
+        updater.StatusChanged += Show;
+        status.Unloaded += (_, _) => updater.StatusChanged -= Show;
+        var auto = Ui.Check("Automatisch aktualisieren", state.S.AutoUpdate, v => { state.S.AutoUpdate = v; state.Touch(); });
+        var check = Ui.Btn("Jetzt prüfen", () => _ = updater.CheckAsync());
+        check.HorizontalAlignment = HorizontalAlignment.Left;
+        return Section($"Updates · Version {Updater.CurrentVersionText}", auto, status, check);
     }
 
     private FrameworkElement DataCard()

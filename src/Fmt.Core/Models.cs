@@ -103,6 +103,7 @@ public sealed class Settings
     public double FreeWidth { get; set; } = 600;
     public double FreeHeight { get; set; } = 760;
     public bool ShowPill { get; set; } = true;
+    public bool AutoUpdate { get; set; } = true;
     public double PillX { get; set; } = DefaultPillX;
     public double PillY { get; set; } = DefaultPillY;
     public bool SidebarIconsOnly { get; set; }

@@ -264,3 +264,60 @@ public sealed class StoreTests : IDisposable
         Assert.Contains("20000000", csv);
     }
 }
+
+public class UpdateFeedTests
+{
+    private const string Url = "https://github.com/ImAestosDev/Frostvein.ManagementTool/releases/download/v1.2.0/FMT.exe";
+    private static readonly Version Current = new(1, 1, 0, 0);
+
+    private static string Release(string tag = "v1.2.0", string name = "FMT.exe", string url = Url, string digest = "\"digest\": \"sha256:ABC\",", string extra = "") =>
+        $$"""{ "tag_name": "{{tag}}", {{extra}} "assets": [ { "name": "other.zip", "browser_download_url": "x" }, { "name": "{{name}}", {{digest}} "browser_download_url": "{{url}}" } ] }""";
+
+    [Fact]
+    public void FindsNewerRelease()
+    {
+        var u = UpdateFeed.Parse(Release(), Current);
+        Assert.NotNull(u);
+        Assert.Equal(new Version(1, 2, 0), u.Version);
+        Assert.Equal(Url, u.DownloadUrl);
+        Assert.Equal("ABC", u.Sha256);
+    }
+
+    [Theory]
+    [InlineData("v1.1.0")]
+    [InlineData("v1.0.9")]
+    [InlineData("kaputt")]
+    public void IgnoresSameOlderOrBadVersions(string tag) => Assert.Null(UpdateFeed.Parse(Release(tag), Current));
+
+    [Fact]
+    public void IgnoresMissingAsset() => Assert.Null(UpdateFeed.Parse(Release(name: "Setup.exe"), Current));
+
+    [Fact]
+    public void IgnoresForeignDownloadUrl() =>
+        Assert.Null(UpdateFeed.Parse(Release(url: "https://example.com/FMT.exe"), Current));
+
+    [Fact]
+    public void RequiresDigest() => Assert.Null(UpdateFeed.Parse(Release(digest: ""), Current));
+
+    [Fact]
+    public void IgnoresPrerelease() => Assert.Null(UpdateFeed.Parse(Release(extra: "\"prerelease\": true,"), Current));
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("{ kaputt")]
+    [InlineData("[]")]
+    public void SurvivesBadJson(string json) => Assert.Null(UpdateFeed.Parse(json, Current));
+
+    [Fact]
+    public void HashCheckDetectsChanges()
+    {
+        var file = Path.GetTempFileName();
+        try
+        {
+            File.WriteAllText(file, "abc");
+            Assert.True(UpdateFeed.MatchesHash(file, "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"));
+            Assert.False(UpdateFeed.MatchesHash(file, "00"));
+        }
+        finally { File.Delete(file); }
+    }
+}
