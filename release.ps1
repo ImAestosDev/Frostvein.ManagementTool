@@ -11,6 +11,8 @@ $out = Join-Path $root "release"
 $tag = "v$Version"
 
 function Run($exe) {
+    # Only the exit code counts: git writes harmless warnings to stderr.
+    $ErrorActionPreference = "Continue"
     & $exe @args
     if ($LASTEXITCODE -ne 0) { throw "$exe failed with exit code $LASTEXITCODE" }
 }
