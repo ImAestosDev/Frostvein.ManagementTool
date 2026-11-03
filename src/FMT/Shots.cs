@@ -39,7 +39,7 @@ internal static class Shots
         Capture(panel, Path.Combine(outDir, "4b-nostaler.png"), () => panel.ShowPage("cat:" + store.Data.Categories.First(c => c.Name == "NosTaler").Id, false));
         Capture(panel, Path.Combine(outDir, "4c-notes.png"), () => panel.ShowPage("cat:" + store.Data.Categories.First(c => c.Name == "Notizen").Id, false));
         Capture(panel, Path.Combine(outDir, "4d-damage-off.png"), () => panel.ShowPage("damage", false));
-        var capture = new PacketCapture(new Dictionary<long, string>(), state.S.PacketLogHidden);
+        var capture = new PacketCapture(new Dictionary<long, string>(), state.S.PacketLogHidden, new NameBook());
         capture.GetType().GetProperty(nameof(PacketCapture.IsRunning))!.SetValue(capture, true);
         panel.Capture = capture;
         capture.Feed(1, "c_info Aestos - -1 -1 - 77 0 0 0 0 1 0 0 0 0 0 0 0");

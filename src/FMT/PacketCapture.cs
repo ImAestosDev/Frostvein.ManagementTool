@@ -1,3 +1,4 @@
+using System.IO;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
@@ -27,6 +28,7 @@ public sealed class PacketCapture : IDisposable
     private readonly Dictionary<uint, DamageMeter> _meters = [];
     private readonly Queue<LoggedPacket> _log = new();
     private readonly Dictionary<long, string> _known;
+    private readonly NameBook _names;
     private volatile HashSet<string> _hidden;
     private volatile Dictionary<Flow, uint> _flows = [];
     private Timer? _tableTimer;
@@ -37,8 +39,9 @@ public sealed class PacketCapture : IDisposable
     private long _packets;
     private DateTime _startedAt;
 
-    public PacketCapture(IDictionary<long, string> myCharacters, IEnumerable<string> hidden)
+    public PacketCapture(IDictionary<long, string> myCharacters, IEnumerable<string> hidden, NameBook names)
     {
+        _names = names;
         _known = new Dictionary<long, string>(myCharacters);
         _hidden = new HashSet<string>(hidden, StringComparer.Ordinal);
     }
@@ -178,7 +181,7 @@ public sealed class PacketCapture : IDisposable
     {
         var now = DateTime.Now;
         Interlocked.Increment(ref _packets);
-        if (!_meters.TryGetValue(pid, out var meter)) _meters[pid] = meter = new DamageMeter(_known);
+        if (!_meters.TryGetValue(pid, out var meter)) _meters[pid] = meter = new DamageMeter(_known, _names);
         meter.Handle(packet, now);
         RememberOwn(meter);
         _lastPid = pid;
@@ -217,6 +220,18 @@ public sealed class PacketCapture : IDisposable
     public DamageStats Stats(uint pid)
     {
         lock (_lock) return Meter(pid)?.Stats() ?? DamageStats.Empty;
+    }
+
+    public void SaveNames(string path)
+    {
+        try
+        {
+            lock (_lock) _names.Save(path);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+            // Stays dirty, the next save tries again.
+        }
     }
 
     public string OwnName(uint pid)

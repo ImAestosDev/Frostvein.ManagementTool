@@ -289,6 +289,51 @@ public sealed class StoreTests : IDisposable
     }
 
     [Fact]
+    public void NamesComeFromChatAndListsAndSurviveRestart()
+    {
+        var t = new DateTime(2026, 11, 3, 12, 0, 0);
+        var path = Path.Combine(Path.GetTempPath(), $"fmt-names-{Guid.NewGuid():N}.json");
+        try
+        {
+            var book = new NameBook();
+            var m = new DamageMeter(null, book);
+            m.Handle("spk 1 11 5 Chatter hallo zusammen", t);
+            m.Handle("pinit 2 1|12|1|99|Gruppe|5|0|1|0|45|0|0|0 2|900|0|50|Pet|-1|319|0|0", t);
+            m.Handle("finit 13|0|1|Freund", t);
+            m.Handle("gmbr 0 14|3|Familie|90|1|0|0|1|20", t);
+            foreach (var id in new[] { 11, 12, 13, 14 })
+                m.Handle($"su 1 {id} 3 500 240 10 11 12 20 30 1 80 100 0 0", t);
+            Assert.Equal(["Chatter", "Gruppe", "Freund", "Familie"], m.Stats().Players.Select(p => p.Name));
+
+            book.Save(path);
+            Assert.False(book.Dirty);
+            var later = new DamageMeter(null, NameBook.Load(path));
+            later.Handle("su 1 12 3 500 240 10 11 12 20 30 1 80 100 0 0", t);
+            Assert.Equal("Gruppe", later.Stats().Players[0].Name);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
+    public void NameBookSurvivesDamagedFile()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"fmt-names-{Guid.NewGuid():N}.json");
+        File.WriteAllText(path, "{ kaputt");
+        try
+        {
+            Assert.False(NameBook.Load(path).TryGet(1, out _));
+            Assert.False(NameBook.Load(path + ".missing").TryGet(1, out _));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
+    [Fact]
     public void MeterFindsOwnCharacterWithoutMapChange()
     {
         var t = new DateTime(2026, 11, 3, 12, 0, 0);

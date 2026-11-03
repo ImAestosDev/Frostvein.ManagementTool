@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json;
 
 namespace Fmt.Core;
 
@@ -12,14 +13,61 @@ public sealed record DamageStats(long? OwnId, IReadOnlyList<PlayerDamage> Player
     public long MapTotal => Players.Sum(p => p.Total);
 }
 
+// Character ids never change, so a name once seen stays valid across sessions.
+public sealed class NameBook
+{
+    private readonly Dictionary<long, string> _names = [];
+
+    public bool Dirty { get; private set; }
+
+    public void Set(long id, string name)
+    {
+        if (name.Length == 0 || (_names.TryGetValue(id, out var old) && old == name)) return;
+        _names[id] = name;
+        Dirty = true;
+    }
+
+    public bool TryGet(long id, out string name) => _names.TryGetValue(id, out name!);
+
+    public static NameBook Load(string path)
+    {
+        var book = new NameBook();
+        try
+        {
+            var saved = JsonSerializer.Deserialize<Dictionary<long, string>>(File.ReadAllText(path));
+            if (saved != null)
+            {
+                foreach (var (id, name) in saved) book._names[id] = name;
+            }
+        }
+        catch (Exception e) when (e is IOException or JsonException or UnauthorizedAccessException)
+        {
+            // Names come back as soon as players are seen again.
+        }
+        return book;
+    }
+
+    public void Save(string path)
+    {
+        if (!Dirty) return;
+        var tmp = path + ".tmp";
+        File.WriteAllText(tmp, JsonSerializer.Serialize(_names));
+        File.Move(tmp, path, true);
+        Dirty = false;
+    }
+}
+
 // Counts the hits of every player on the map from "su" packets.
-public sealed class DamageMeter(IReadOnlyDictionary<long, string>? known = null)
+public sealed class DamageMeter(IReadOnlyDictionary<long, string>? known = null, NameBook? names = null)
 {
     private const string PlayerType = "1";
     private const int HitModeMiss = 2;
     private const int CInfoName = 1, CInfoId = 6;
     private const int InType = 1, InName = 2, InId = 4;
     private const int CondType = 1, CondId = 2;
+    private const int SpkId = 2, SpkName = 4;
+    private const string GroupTag = "1";
+    private const int GroupId = 1, GroupName = 4, FriendName = 3, FamilyName = 2;
     private const int SuAttackerType = 1, SuAttacker = 2, SuTargetType = 3, SuTarget = 4, SuSkill = 5, SuDamage = 13, SuHitMode = 14;
 
     private sealed class Tally
@@ -30,7 +78,7 @@ public sealed class DamageMeter(IReadOnlyDictionary<long, string>? known = null)
     }
 
     private readonly Dictionary<long, Tally> _players = [];
-    private readonly Dictionary<long, string> _names = [];
+    private readonly NameBook _names = names ?? new NameBook();
 
     public long? OwnId { get; private set; }
     public string OwnName => OwnId is { } id ? NameOf(id) : "";
@@ -41,6 +89,27 @@ public sealed class DamageMeter(IReadOnlyDictionary<long, string>? known = null)
         else if (packet.StartsWith("in 1 ", StringComparison.Ordinal)) HandleIn(packet);
         else if (packet.StartsWith("c_info ", StringComparison.Ordinal)) HandleInfo(packet);
         else if (packet.StartsWith("cond 1 ", StringComparison.Ordinal)) HandleCond(packet);
+        else if (packet.StartsWith("spk 1 ", StringComparison.Ordinal)) HandleChat(packet);
+        else if (packet.StartsWith("pinit ", StringComparison.Ordinal)) HandleLists(packet, GroupId, GroupName, GroupTag);
+        else if (packet.StartsWith("finit ", StringComparison.Ordinal)) HandleLists(packet, 0, FriendName, null);
+        else if (packet.StartsWith("gmbr ", StringComparison.Ordinal)) HandleLists(packet, 0, FamilyName, null);
+    }
+
+    private void HandleChat(string packet)
+    {
+        var t = packet.Split(' ');
+        if (t.Length > SpkName && Id(t[SpkId], out var id)) _names.Set(id, t[SpkName]);
+    }
+
+    // Group, friend and family lists carry "id|...|name" entries.
+    private void HandleLists(string packet, int idPart, int namePart, string? tag)
+    {
+        foreach (var entry in packet.Split(' ').Skip(1))
+        {
+            var parts = entry.Split('|');
+            if (parts.Length <= Math.Max(idPart, namePart) || (tag != null && parts[0] != tag)) continue;
+            if (Id(parts[idPart], out var id)) _names.Set(id, parts[namePart]);
+        }
     }
 
     // Manual choice from the player list.
@@ -54,13 +123,13 @@ public sealed class DamageMeter(IReadOnlyDictionary<long, string>? known = null)
         var t = packet.Split(' ');
         if (t.Length <= CInfoId || !Id(t[CInfoId], out var id)) return;
         OwnId = id;
-        _names[id] = t[CInfoName];
+        _names.Set(id, t[CInfoName]);
     }
 
     private void HandleIn(string packet)
     {
         var t = packet.Split(' ');
-        if (t.Length > InId && t[InType] == PlayerType && Id(t[InId], out var id)) _names[id] = t[InName];
+        if (t.Length > InId && t[InType] == PlayerType && Id(t[InId], out var id)) _names.Set(id, t[InName]);
     }
 
     // Only the own character gets this packet, so it works without a map change.
@@ -104,7 +173,7 @@ public sealed class DamageMeter(IReadOnlyDictionary<long, string>? known = null)
 
     private string NameOf(long id)
     {
-        if (_names.TryGetValue(id, out var name)) return name;
+        if (_names.TryGet(id, out var name)) return name;
         return known != null && known.TryGetValue(id, out var saved) && saved.Length > 0 ? saved : $"Spieler {id}";
     }
 

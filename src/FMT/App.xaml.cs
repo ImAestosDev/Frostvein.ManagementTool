@@ -23,6 +23,8 @@ public partial class App : Application
     private Updater? _updater;
     private PacketCapture? _capture;
     private DamageOverlay? _damageOverlay;
+    private string _namesPath = "";
+    private readonly System.Windows.Threading.DispatcherTimer _namesTimer = new() { Interval = TimeSpan.FromSeconds(5) };
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -74,7 +76,10 @@ public partial class App : Application
         _updater = new Updater(_state, () => !_panel.IsOpen, Quit);
         _panel.Updater = _updater;
         _panel.Quit = Quit;
-        _capture = new PacketCapture(_state.S.MyCharacters, _state.S.PacketLogHidden);
+        _namesPath = Path.Combine(Path.GetDirectoryName(store.FilePath)!, "players.json");
+        _capture = new PacketCapture(_state.S.MyCharacters, _state.S.PacketLogHidden, NameBook.Load(_namesPath));
+        _namesTimer.Tick += (_, _) => _capture.SaveNames(_namesPath);
+        _namesTimer.Start();
         _capture.OwnCharacterFound += (id, name) => Dispatcher.BeginInvoke(() =>
         {
             _state.S.MyCharacters[id] = name;
@@ -209,6 +214,8 @@ public partial class App : Application
         _state?.Flush();
         _signalWait?.Unregister(null);
         _updater?.Dispose();
+        _namesTimer.Stop();
+        _capture?.SaveNames(_namesPath);
         _capture?.Dispose();
         _hotkeys?.Dispose();
         _tracker?.Dispose();
