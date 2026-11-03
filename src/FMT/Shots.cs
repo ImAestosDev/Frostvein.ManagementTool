@@ -112,6 +112,14 @@ internal static class Shots
             ThemeManager.Apply(state.S.Theme);
             panel.ShowPage("dashboard", false);
         });
+        foreach (var skin in new[] { "Dunkel", "NosTale" })
+        {
+            ThemeManager.ApplyPreset(state.S.Theme, skin);
+            ThemeManager.Apply(state.S.Theme);
+            Capture(panel, Path.Combine(outDir, $"8-{skin}-dashboard.png"), () => panel.ShowPage("dashboard", false));
+            Capture(panel, Path.Combine(outDir, $"8-{skin}-settings.png"), () => panel.ShowPage("settings", false));
+            Capture(panel, Path.Combine(outDir, $"8-{skin}-drops.png"), () => panel.ShowPage("drops", false));
+        }
         RenderButton(Path.Combine(outDir, "button.png"));
         Application.Current.Shutdown();
     }

@@ -29,7 +29,7 @@ public sealed class PillWindow : Window
         Topmost = true;
         ResizeMode = ResizeMode.NoResize;
         SizeToContent = SizeToContent.WidthAndHeight;
-        FontFamily = new FontFamily("Segoe UI Variable Text, Segoe UI");
+        SetResourceReference(FontFamilyProperty, "UiFont");
         Title = "FMT Pill";
 
         var root = BuildButton();

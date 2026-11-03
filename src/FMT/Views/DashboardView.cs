@@ -30,7 +30,7 @@ public sealed class DashboardView(AppState state, PanelWindow shell) : PageView
             Ui.AddTo(col, widget, 10);
         }
         if (col.Children.Count == 0)
-            Ui.AddTo(col, Ui.T("Alle Widgets sind ausgeblendet. Unter Anpassen kannst du sie wieder einschalten.", 13, "Muted", wrap: true), 6);
+            Ui.AddTo(col, Ui.T("Alle Widgets sind ausgeblendet. Unter Einstellungen kannst du sie wieder einschalten.", 13, "Muted", wrap: true), 6);
         _scroll.Content = col;
         _scroll.ScrollToVerticalOffset(offset);
     }

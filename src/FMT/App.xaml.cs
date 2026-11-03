@@ -10,6 +10,7 @@ public partial class App : Application
     private const int HotkeyToggle = 1, HotkeyQuick = 2;
     public const string WaitForArgument = "--wait-for";
     public const string OpenArgument = "--open";
+    public const string AutostartArgument = "--autostart";
 
     private Mutex? _mutex;
     private EventWaitHandle? _signal;
@@ -139,7 +140,7 @@ public partial class App : Application
         }
 
         if (store.LoadWarning != null) _panel.ShowAndNotify(store.LoadWarning);
-        if (args.Contains(OpenArgument) || (_tracker.Target == 0 && waitIndex < 0)) _panel.Open();
+        if (args.Contains(OpenArgument) || (_tracker.Target == 0 && waitIndex < 0 && !args.Contains(AutostartArgument))) _panel.Open();
 #if !DEBUG
         _updater.Start();
 #endif
@@ -202,7 +203,8 @@ public partial class App : Application
         var wait = args.IndexOf(WaitForArgument);
         if (wait >= 0) args.RemoveRange(wait, Math.Min(2, args.Count - wait));
         args.Remove(OpenArgument);
-        args.AddRange([WaitForArgument, Environment.ProcessId.ToString(), OpenArgument]);
+        args.AddRange([WaitForArgument, Environment.ProcessId.ToString()]);
+        if (!args.Contains(AutostartArgument)) args.Add(OpenArgument);
         var start = new System.Diagnostics.ProcessStartInfo(Environment.ProcessPath!)
         {
             UseShellExecute = true,
@@ -269,7 +271,7 @@ public sealed class Tray : IDisposable
             ContextMenuStrip = new System.Windows.Forms.ContextMenuStrip(),
         };
         _icon.ContextMenuStrip.Items.Add("Öffnen / Schließen", null, (_, _) => toggle());
-        _icon.ContextMenuStrip.Items.Add("Anpassen", null, (_, _) => settings());
+        _icon.ContextMenuStrip.Items.Add("Einstellungen", null, (_, _) => settings());
         _icon.ContextMenuStrip.Items.Add("Beenden", null, (_, _) => quit());
         _icon.MouseClick += (_, e) =>
         {

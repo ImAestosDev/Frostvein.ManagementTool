@@ -57,7 +57,7 @@ public sealed class PanelWindow : Window
         ResizeMode = ResizeMode.NoResize;
         Title = "FMT";
         Topmost = tracker != null;
-        FontFamily = new FontFamily("Segoe UI Variable Text, Segoe UI");
+        SetResourceReference(FontFamilyProperty, "UiFont");
         WindowStartupLocation = WindowStartupLocation.Manual;
         TextOptions.SetTextFormattingMode(this, TextFormattingMode.Display);
 
@@ -214,7 +214,7 @@ public sealed class PanelWindow : Window
         sep2.SetResourceReference(Border.BackgroundProperty, "Line");
         _nav.Children.Add(sep2);
         Add("layout", Ui.G.Sliders, "Kategorien");
-        Add("settings", Ui.G.Settings, "Anpassen");
+        Add("settings", Ui.G.Settings, "Einstellungen");
     }
 
     public void ShowPage(string key, bool activate = true)

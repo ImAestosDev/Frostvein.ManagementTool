@@ -13,10 +13,11 @@ public sealed class SettingsView(AppState state, Action hotkeysChanged, Updater?
         Content = _scroll;
         var offset = _scroll.VerticalOffset;
         var col = new StackPanel { Margin = new Thickness(14, 12, 12, 16) };
-        Ui.AddTo(col, Ui.T("Anpassen", 18, bold: true), 0);
-        Ui.AddTo(col, PositionCard(), 10);
-        Ui.AddTo(col, LookCard(), 10);
+        Ui.AddTo(col, Ui.T("Einstellungen", 18, bold: true), 0);
+        Ui.AddTo(col, StartCard(), 10);
         Ui.AddTo(col, ColorsCard(), 10);
+        Ui.AddTo(col, LookCard(), 10);
+        Ui.AddTo(col, PositionCard(), 10);
         Ui.AddTo(col, DashboardCard(), 10);
         Ui.AddTo(col, LandOfLifeCard(), 10);
         Ui.AddTo(col, HotkeyCard(), 10);
@@ -45,6 +46,21 @@ public sealed class SettingsView(AppState state, Action hotkeysChanged, Updater?
             state.TouchSettings();
         };
         return Ui.Col(2, Ui.Cols("*,Auto", Ui.T(label, 12, "Muted"), text), s);
+    }
+
+    private FrameworkElement StartCard()
+    {
+        var check = Ui.Check("Beim Windows-Start automatisch starten", Autostart.IsEnabled, v =>
+        {
+            if (Autostart.Set(v) is { } error) state.Notify(error);
+            Refresh();
+        });
+        return Section("Start",
+            check,
+            Ui.T("FMT startet dann im Hintergrund, ohne das Fenster zu öffnen, und hängt sich an NosTale, sobald das Spiel läuft.", 12, "Muted", wrap: true),
+            PacketCapture.IsAdmin
+                ? null
+                : Ui.T("Liest FMT mit, fragt Windows beim Start nach Admin-Rechten. Aktivierst du den Autostart bei laufendem Mitlesen, entfällt diese Abfrage.", 12, "Muted", wrap: true));
     }
 
     private FrameworkElement PositionCard()
@@ -125,7 +141,7 @@ public sealed class SettingsView(AppState state, Action hotkeysChanged, Updater?
             cell.Margin = new Thickness(0, 0, 8, 8);
             grid.Children.Add(cell);
         }
-        return Section("Farben", presets, grid);
+        return Section("Aussehen", presets, grid);
     }
 
     private FrameworkElement DashboardCard()

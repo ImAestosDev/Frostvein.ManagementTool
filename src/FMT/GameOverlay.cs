@@ -24,7 +24,7 @@ public abstract class GameOverlay : Window
         Topmost = true;
         ResizeMode = ResizeMode.NoResize;
         SizeToContent = SizeToContent.WidthAndHeight;
-        FontFamily = new FontFamily("Segoe UI Variable Text, Segoe UI");
+        SetResourceReference(FontFamilyProperty, "UiFont");
         Title = title;
 
         SourceInitialized += (_, _) =>
