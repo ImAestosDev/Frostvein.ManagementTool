@@ -13,6 +13,7 @@ public static class ItemCatalog
     private sealed record Row(string Icon, string Name);
 
     private static Dictionary<int, Row>? _rows;
+    private static Dictionary<int, string>? _cards;
     private static ZipArchive? _icons;
     private static readonly Dictionary<string, ImageSource?> Cache = [];
 
@@ -24,6 +25,31 @@ public static class ItemCatalog
         if (!Rows.TryGetValue(vnum, out var row)) return null;
         if (Cache.TryGetValue(row.Icon, out var known)) return known;
         return Cache[row.Icon] = LoadIcon(row.Icon);
+    }
+
+    public static string CardName(int card) =>
+        Cards.TryGetValue(card, out var name) ? WatchedItems.BaseName(name) : $"Buff {card}";
+
+    public static IReadOnlySet<int> WatchedVNums() =>
+        Rows.Where(r => WatchedItems.Contains(r.Value.Name)).Select(r => r.Key).ToHashSet();
+
+    public static IReadOnlySet<int> WatchedCards() =>
+        Cards.Where(c => WatchedItems.Contains(c.Value)).Select(c => c.Key).ToHashSet();
+
+    private static Dictionary<int, string> Cards => _cards ??= LoadCards();
+
+    private static Dictionary<int, string> LoadCards()
+    {
+        var cards = new Dictionary<int, string>();
+        using var stream = Open("cards.tsv");
+        if (stream == null) return cards;
+        using var reader = new StreamReader(stream, Encoding.UTF8);
+        while (reader.ReadLine() is { } line)
+        {
+            var parts = line.Split('\t');
+            if (parts.Length == 2 && int.TryParse(parts[0], out var id)) cards[id] = parts[1];
+        }
+        return cards;
     }
 
     private static Dictionary<int, Row> Rows => _rows ??= LoadRows();

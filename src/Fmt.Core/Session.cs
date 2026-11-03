@@ -1,6 +1,6 @@
 namespace Fmt.Core;
 
-public sealed record SessionStats(bool Running, TimeSpan Duration, DamageStats Damage, ExpStats Exp, DropStats Drops);
+public sealed record SessionStats(bool Running, TimeSpan Duration, DamageStats Damage, ExpStats Exp, DropStats Drops, IReadOnlyList<UsedItem> Used, IReadOnlyList<ActiveBuff> Buffs, bool InventoryKnown);
 
 // All counters of one run, separate from the counters in their own tabs.
 public sealed class Session
@@ -8,13 +8,18 @@ public sealed class Session
     private readonly DamageMeter _damage;
     private readonly ExpTracker _exp = new();
     private readonly DropTracker _drops = new();
+    private readonly ItemUseTracker? _uses;
+    private readonly Dictionary<int, int> _usedAtStart;
     private readonly DateTime _start;
+    private Dictionary<int, int>? _usedAtEnd;
     private DateTime? _end;
 
-    public Session(DateTime now, string? lastLev, DamageMeter damage, DropTracker? liveDrops)
+    public Session(DateTime now, string? lastLev, DamageMeter damage, DropTracker? liveDrops, ItemUseTracker? uses = null)
     {
         _start = now;
         _damage = damage;
+        _uses = uses;
+        _usedAtStart = uses?.Used(now) ?? [];
         // The last known progress is the baseline, so the first kill counts already.
         if (lastLev != null) _exp.Handle(lastLev, now);
         _exp.StartRecording(now);
@@ -37,8 +42,17 @@ public sealed class Session
         if (!Running) return;
         _end = now;
         _exp.StopRecording(now);
+        _usedAtEnd = _uses?.Used(now) ?? [];
     }
 
-    public SessionStats Stats(DateTime now) =>
-        new(Running, (_end ?? now) - _start, _damage.Stats(), _exp.Stats(now), _drops.Stats());
+    public SessionStats Stats(DateTime now)
+    {
+        var used = (_usedAtEnd ?? _uses?.Used(now) ?? [])
+            .Select(pair => new UsedItem(pair.Key, pair.Value - _usedAtStart.GetValueOrDefault(pair.Key)))
+            .Where(u => u.Count > 0)
+            .OrderByDescending(u => u.Count).ThenBy(u => u.VNum)
+            .ToList();
+        IReadOnlyList<ActiveBuff> buffs = Running && _uses != null ? _uses.Buffs(now) : [];
+        return new SessionStats(Running, (_end ?? now) - _start, _damage.Stats(), _exp.Stats(now), _drops.Stats(), used, buffs, _uses?.InventoryKnown ?? false);
+    }
 }

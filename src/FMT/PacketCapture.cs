@@ -29,6 +29,8 @@ public sealed class PacketCapture : IDisposable
     private readonly Dictionary<uint, ExpTracker> _exp = [];
     private readonly Dictionary<uint, DropTracker> _drops = [];
     private readonly Dictionary<uint, Session> _sessions = [];
+    private readonly Dictionary<uint, ItemUseTracker> _uses = [];
+    private readonly IReadOnlySet<int> _watchedItems = ItemCatalog.WatchedVNums(), _watchedCards = ItemCatalog.WatchedCards();
     private readonly Dictionary<uint, string> _lastLev = [];
     private readonly Queue<LoggedPacket> _log = new();
     private readonly Dictionary<long, string> _known;
@@ -191,6 +193,8 @@ public sealed class PacketCapture : IDisposable
         exp.Handle(packet, now);
         if (!_drops.TryGetValue(pid, out var drops)) _drops[pid] = drops = new DropTracker();
         drops.Handle(packet, meter.OwnId);
+        if (!_uses.TryGetValue(pid, out var uses)) _uses[pid] = uses = new ItemUseTracker(_watchedItems, _watchedCards);
+        uses.Handle(packet, meter.OwnId, now);
         if (packet.StartsWith("lev ", StringComparison.Ordinal)) _lastLev[pid] = packet;
         if (_sessions.TryGetValue(pid, out var session)) session.Handle(packet, now, meter.OwnId);
         RememberOwn(meter);
@@ -297,7 +301,8 @@ public sealed class PacketCapture : IDisposable
             _drops.TryGetValue(key, out var drops);
             var damage = new DamageMeter(_known, _names);
             if (meter?.OwnId is { } own) damage.SetOwn(own);
-            _sessions[key] = new Session(DateTime.Now, lev, damage, drops);
+            if (!_uses.TryGetValue(key, out var uses)) _uses[key] = uses = new ItemUseTracker(_watchedItems, _watchedCards);
+            _sessions[key] = new Session(DateTime.Now, lev, damage, drops, uses);
         }
     }
 

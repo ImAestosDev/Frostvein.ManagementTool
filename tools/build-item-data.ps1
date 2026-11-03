@@ -76,6 +76,21 @@ foreach ($line in [IO.File]::ReadLines($itemDat)) {
 [IO.File]::WriteAllLines("$assets\items.tsv", $rows, (New-Object Text.UTF8Encoding($false)))
 "Items: $($rows.Count), davon ohne Namen: $(($rows | Where-Object { $_.EndsWith("`t") }).Count)"
 
+
+$cardNames = [NosLang]::Read($lang, '_code_de_Card.txt')
+$cardRows = New-Object System.Collections.Generic.List[string]
+$card = $null
+foreach ($line in [IO.File]::ReadLines("$Dev\Emulator\Frostvein\Frostvein.Resources\Dat\Card.dat")) {
+    $t = $line.Trim() -split '\s+'
+    if ($t[0] -eq 'VNUM') { $card = $t[1] }
+    elseif ($t[0] -eq 'NAME' -and $card -ne $null) {
+        $name = $cardNames[$t[1]]
+        if ($name) { $cardRows.Add("$card`t$name") }
+        $card = $null
+    }
+}
+[IO.File]::WriteAllLines("$assets\cards.tsv", $cardRows, (New-Object Text.UTF8Encoding($false)))
+"Buffs: $($cardRows.Count)"
 $zipPath = "$assets\icons.zip"
 if (Test-Path $zipPath) { Remove-Item $zipPath }
 $zip = [IO.Compression.ZipFile]::Open($zipPath, 'Create')
