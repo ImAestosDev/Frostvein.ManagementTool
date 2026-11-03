@@ -6,7 +6,7 @@ namespace Fmt.App;
 // Inventory style grid of the picked up items with the gold below; shared by page and overlay.
 public sealed class DropCard : Border
 {
-    private const int Columns = 6, MinRows = 2;
+    private const int Columns = 6, MinRows = 5;
     private const double SlotSize = 42, IconSize = 32;
 
     private readonly UniformGrid _slots = new() { Columns = Columns };
