@@ -128,13 +128,13 @@ public sealed class TcpStream
     }
 }
 
-public readonly record struct TcpSegment(uint SourceAddress, ushort SourcePort, ushort DestinationPort, uint Sequence, int PayloadOffset, int PayloadLength);
+public readonly record struct TcpSegment(uint SourceAddress, uint DestinationAddress, ushort SourcePort, ushort DestinationPort, uint Sequence, int PayloadOffset, int PayloadLength);
 
 public static class IpPacket
 {
     private const int ProtocolTcp = 6;
 
-    // SourceAddress keeps network byte order, like the Windows TCP table.
+    // Addresses keep network byte order, like the Windows TCP table.
     public static bool TryParseTcp(ReadOnlySpan<byte> packet, out TcpSegment segment)
     {
         segment = default;
@@ -147,9 +147,10 @@ public static class IpPacket
         var tcpHeader = (tcp[12] >> 4) * 4;
         if (tcpHeader < 20 || tcpHeader > tcp.Length) return false;
 
-        var address = BitConverter.ToUInt32(packet.Slice(12, 4));
+        var source = BitConverter.ToUInt32(packet.Slice(12, 4));
+        var destination = BitConverter.ToUInt32(packet.Slice(16, 4));
         var sequence = (uint)((tcp[4] << 24) | (tcp[5] << 16) | (tcp[6] << 8) | tcp[7]);
-        segment = new TcpSegment(address, (ushort)((tcp[0] << 8) | tcp[1]), (ushort)((tcp[2] << 8) | tcp[3]), sequence, ipHeader + tcpHeader, tcp.Length - tcpHeader);
+        segment = new TcpSegment(source, destination, (ushort)((tcp[0] << 8) | tcp[1]), (ushort)((tcp[2] << 8) | tcp[3]), sequence, ipHeader + tcpHeader, tcp.Length - tcpHeader);
         return true;
     }
 }

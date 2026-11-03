@@ -15,6 +15,8 @@ public sealed class DamageView : PageView
     private readonly TextBlock _hits = Ui.T("0", 22, bold: true);
     private readonly TextBlock _misses = Ui.T("", 12, "Muted");
     private readonly TextBlock _status = Ui.T("", 12, "Muted", wrap: true);
+    private readonly TextBlock _diagnostics = Ui.T("", 12, "Muted", wrap: true);
+    private FrameworkElement? _firewall;
 
     public DamageView(AppState state, PanelWindow shell)
     {
@@ -49,6 +51,9 @@ public sealed class DamageView : PageView
             Ui.AddTo(col, Ui.Row(0, reset, stop), 10);
             Ui.AddTo(col, overlay, 10);
             Ui.AddTo(col, _status, 10);
+            Ui.AddTo(col, _diagnostics, 4);
+            _firewall = FirewallCard();
+            Ui.AddTo(col, _firewall, 10);
             Update();
         }
         Content = new ScrollViewer { Content = col, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
@@ -57,7 +62,7 @@ public sealed class DamageView : PageView
     // The value blocks survive page rebuilds.
     private void Detach()
     {
-        foreach (var t in new[] { _total, _best, _bestSkill, _perSecond, _hits, _misses, _status })
+        foreach (var t in new[] { _total, _best, _bestSkill, _perSecond, _hits, _misses, _status, _diagnostics })
             (t.Parent as Panel)?.Children.Remove(t);
     }
 
@@ -72,9 +77,27 @@ public sealed class DamageView : PageView
             start));
     }
 
+    private FrameworkElement FirewallCard()
+    {
+        var allow = Ui.Btn("Firewall-Regel anlegen", () =>
+        {
+            var error = PacketCapture.AllowInFirewall();
+            _state.Notify(error ?? "Firewall-Regel angelegt. Kämpf kurz, dann sollten Pakete ankommen.");
+        }, "Primary");
+        allow.HorizontalAlignment = HorizontalAlignment.Left;
+        var card = Ui.Card(Ui.Col(8,
+            Ui.T("Es kommen keine Spieldaten an", 13, bold: true),
+            Ui.T("NosTale ist verbunden, aber Windows liefert FMT keine eingehenden Daten. Meist blockiert das die Firewall. Die Regel erlaubt eingehenden Verkehr nur für FMT, du kannst sie jederzeit in der Windows-Firewall löschen.", 12, "Muted", wrap: true),
+            allow));
+        card.Visibility = Visibility.Collapsed;
+        return card;
+    }
+
     private void Update()
     {
         if (_shell.Capture is not { IsRunning: true } capture) return;
+        _diagnostics.Text = $"Spielverbindungen {capture.Connections} · eingehend {capture.Incoming} · ausgehend {capture.Outgoing} · erkannte Pakete {capture.Packets}";
+        if (_firewall != null) _firewall.Visibility = capture.LooksBlocked ? Visibility.Visible : Visibility.Collapsed;
         var s = capture.Stats(_shell.GamePid);
         _total.Text = DamageCard.Number(s.Total);
         _best.Text = DamageCard.Number(s.Best);

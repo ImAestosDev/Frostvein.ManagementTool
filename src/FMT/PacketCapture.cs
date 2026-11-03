@@ -26,14 +26,47 @@ public sealed class PacketCapture : IDisposable
     private readonly Dictionary<Flow, TcpStream> _streams = [];
     private readonly Dictionary<uint, DamageMeter> _meters = [];
     private readonly Queue<LoggedPacket> _log = new();
-    private Dictionary<Flow, uint> _flows = [];
+    private volatile Dictionary<Flow, uint> _flows = [];
     private Timer? _tableTimer;
     private uint _lastPid;
     private long _logVersion;
+    private long _incoming;
+    private long _outgoing;
+    private long _packets;
+    private DateTime _startedAt;
 
     public bool IsRunning { get; private set; }
     public string? Error { get; private set; }
     public long LogVersion => Interlocked.Read(ref _logVersion);
+    public int Connections => _flows.Count;
+    public long Incoming => Interlocked.Read(ref _incoming);
+    public long Outgoing => Interlocked.Read(ref _outgoing);
+    public long Packets => Interlocked.Read(ref _packets);
+
+    // A connected game without any incoming data means something filters the raw socket.
+    public bool LooksBlocked => IsRunning && Connections > 0 && Incoming == 0 && DateTime.Now - _startedAt > BlockedAfter;
+
+    private static readonly TimeSpan BlockedAfter = TimeSpan.FromSeconds(8);
+    private const string FirewallRule = "FMT Packet Capture";
+
+    // Inbound allow rule for this program only; returns an error text or null.
+    public static string? AllowInFirewall()
+    {
+        var start = new System.Diagnostics.ProcessStartInfo("netsh") { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true };
+        foreach (var arg in new[] { "advfirewall", "firewall", "add", "rule", $"name={FirewallRule}", "dir=in", "action=allow", $"program={Environment.ProcessPath}", "enable=yes" })
+            start.ArgumentList.Add(arg);
+        try
+        {
+            using var process = System.Diagnostics.Process.Start(start)!;
+            var text = process.StandardOutput.ReadToEnd();
+            process.WaitForExit();
+            return process.ExitCode == 0 ? null : text.Trim();
+        }
+        catch (System.ComponentModel.Win32Exception e)
+        {
+            return e.Message;
+        }
+    }
 
     public static bool IsAdmin
     {
@@ -77,6 +110,7 @@ public sealed class PacketCapture : IDisposable
         }
         Error = null;
         IsRunning = true;
+        _startedAt = DateTime.Now;
         _tableTimer = new Timer(_ => RefreshFlows(), null, 0, TableRefreshMs);
     }
 
@@ -101,7 +135,12 @@ public sealed class PacketCapture : IDisposable
                 var length = socket.Receive(buffer);
                 if (!IpPacket.TryParseTcp(buffer.AsSpan(0, length), out var s) || s.PayloadLength == 0) continue;
                 var flow = new Flow(s.SourceAddress, s.SourcePort, s.DestinationPort);
-                if (!_flows.TryGetValue(flow, out var pid)) continue;
+                if (!_flows.TryGetValue(flow, out var pid))
+                {
+                    if (_flows.ContainsKey(new Flow(s.DestinationAddress, s.DestinationPort, s.SourcePort))) Interlocked.Increment(ref _outgoing);
+                    continue;
+                }
+                Interlocked.Increment(ref _incoming);
 
                 lock (_lock)
                 {
@@ -127,6 +166,7 @@ public sealed class PacketCapture : IDisposable
     private void Record(uint pid, string packet)
     {
         var now = DateTime.Now;
+        Interlocked.Increment(ref _packets);
         if (!_meters.TryGetValue(pid, out var meter)) _meters[pid] = meter = new DamageMeter();
         meter.Handle(packet, now);
         _lastPid = pid;
