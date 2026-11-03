@@ -116,6 +116,9 @@ public sealed class Settings
     public bool PacketLogItemsOnly { get; set; }
     public double DamageOverlayX { get; set; } = 0.02;
     public double DamageOverlayY { get; set; } = 0.12;
+    public bool ShowExpOverlay { get; set; } = true;
+    public double ExpOverlayX { get; set; } = 0.35;
+    public double ExpOverlayY { get; set; } = 0.02;
     public LandOfLifeSettings LandOfLife { get; set; } = new();
     public double PillX { get; set; } = DefaultPillX;
     public double PillY { get; set; } = DefaultPillY;

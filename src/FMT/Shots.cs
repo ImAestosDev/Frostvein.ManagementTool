@@ -62,8 +62,10 @@ internal static class Shots
             RenderCounter(Path.Combine(outDir, $"counter-{mode}-small.png"), capture, mode, true);
         }
         capture.Feed(1, "lev 85 2500000 40 500000 10000000 1000000 100000 50 700000 12 2800000 0");
+        capture.StartExpRecording(1);
         capture.Feed(1, "lev 85 3742000 40 512000 10000000 1000000 100000 50 700000 12 2800000 0");
         Capture(panel, Path.Combine(outDir, "4g-exp.png"), () => panel.ShowPage("exp", false));
+        RenderExp(Path.Combine(outDir, "counter-exp.png"), capture);
         Capture(panel, Path.Combine(outDir, "4f-packets.png"), () => panel.ShowPage("packets", false));
         Capture(panel, Path.Combine(outDir, "5-layout.png"), () => panel.ShowPage("layout", false));
         Capture(panel, Path.Combine(outDir, "6-settings.png"), () => panel.ShowPage("settings", false));
@@ -116,6 +118,21 @@ internal static class Shots
     {
         var card = new DamageCard(() => { }, _ => { }, () => { });
         card.Show(capture.Stats(1), mode, small);
+        card.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        card.Arrange(new Rect(card.DesiredSize));
+        card.UpdateLayout();
+        var bmp = new RenderTargetBitmap((int)Math.Ceiling(card.ActualWidth), (int)Math.Ceiling(card.ActualHeight), 96, 96, PixelFormats.Pbgra32);
+        bmp.Render(card);
+        var png = new PngBitmapEncoder();
+        png.Frames.Add(BitmapFrame.Create(bmp));
+        using var fs = File.Create(file);
+        png.Save(fs);
+    }
+
+    private static void RenderExp(string file, PacketCapture capture)
+    {
+        var card = new ExpCard(() => { });
+        card.Show(capture.Exp(1));
         card.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
         card.Arrange(new Rect(card.DesiredSize));
         card.UpdateLayout();

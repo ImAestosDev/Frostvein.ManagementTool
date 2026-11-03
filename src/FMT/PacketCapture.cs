@@ -257,6 +257,16 @@ public sealed class PacketCapture : IDisposable
         lock (_lock) ExpOf(pid)?.Reset(DateTime.Now);
     }
 
+    public void StartExpRecording(uint pid)
+    {
+        lock (_lock) ExpOf(pid)?.StartRecording(DateTime.Now);
+    }
+
+    public void StopExpRecording(uint pid)
+    {
+        lock (_lock) ExpOf(pid)?.StopRecording(DateTime.Now);
+    }
+
     private ExpTracker? ExpOf(uint pid) =>
         _exp.TryGetValue(pid, out var exp) || _exp.TryGetValue(_lastPid, out exp) ? exp : null;
 
