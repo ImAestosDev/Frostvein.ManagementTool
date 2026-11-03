@@ -109,6 +109,9 @@ public sealed class Settings
     public bool AutoUpdate { get; set; } = true;
     public bool CaptureEnabled { get; set; }
     public bool ShowDamageOverlay { get; set; } = true;
+    public Dictionary<long, string> MyCharacters { get; set; } = [];
+    public List<string> PacketLogHidden { get; set; } = ["su", "mv", "stat", "bf", "pst", "eff"];
+    public bool PacketLogItemsOnly { get; set; }
     public double DamageOverlayX { get; set; } = 0.02;
     public double DamageOverlayY { get; set; } = 0.12;
     public LandOfLifeSettings LandOfLife { get; set; } = new();

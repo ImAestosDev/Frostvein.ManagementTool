@@ -74,7 +74,12 @@ public partial class App : Application
         _updater = new Updater(_state, () => !_panel.IsOpen, Quit);
         _panel.Updater = _updater;
         _panel.Quit = Quit;
-        _capture = new PacketCapture();
+        _capture = new PacketCapture(_state.S.MyCharacters, _state.S.PacketLogHidden);
+        _capture.OwnCharacterFound += (id, name) => Dispatcher.BeginInvoke(() =>
+        {
+            _state.S.MyCharacters[id] = name;
+            _state.Touch();
+        });
         _panel.Capture = _capture;
         _panel.StartCapture = EnableCapture;
         _panel.StopCapture = DisableCapture;

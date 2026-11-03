@@ -4,33 +4,50 @@ using System.Windows.Threading;
 
 namespace Fmt.App;
 
-// Compact counter content, shared by the overlay and dev renders.
+// Compact player list, shared by the overlay and dev renders.
 public sealed class DamageCard : Border
 {
+    private const int MaxRows = 5;
+    private const string RowColumns = "100,84,70";
     private static readonly CultureInfo German = new("de-DE");
 
-    private readonly TextBlock _total = Ui.T("0", 15, bold: true);
-    private readonly TextBlock _best = Ui.T("0", 15, bold: true);
+    private readonly StackPanel _rows = new();
+    private DamageStats? _shown;
 
     public DamageCard(Action reset)
     {
-        Padding = new Thickness(10, 5, 4, 5);
+        Padding = new Thickness(10, 5, 4, 6);
         BorderThickness = new Thickness(1);
         Cursor = Cursors.SizeAll;
         SetResourceReference(BackgroundProperty, "Bg");
         SetResourceReference(BorderBrushProperty, "Line");
         SetResourceReference(CornerRadiusProperty, "CornerSmall");
         var button = Ui.IconBtn(Ui.G.Undo, "Zähler zurücksetzen", reset, 12);
-        button.Margin = new Thickness(8, 0, 0, 0);
-        Child = Ui.Row(10, Pair("Schaden", _total), Pair("Best Hit", _best), button);
+        button.VerticalAlignment = VerticalAlignment.Top;
+        button.Margin = new Thickness(6, 0, 0, 0);
+        Child = Ui.Cols("*,Auto", _rows, button);
+        Show(DamageStats.Empty);
     }
-
-    private static StackPanel Pair(string label, TextBlock value) => Ui.Col(0, Ui.T(label, 10, "Muted"), value);
 
     public void Show(DamageStats stats)
     {
-        _total.Text = Number(stats.Total);
-        _best.Text = Number(stats.Best);
+        if (_shown != null && Same(_shown, stats)) return;
+        _shown = stats;
+        _rows.Children.Clear();
+        _rows.Children.Add(Row("Spieler", "Schaden", "Best Hit", "Muted", 10, false));
+        foreach (var p in stats.Players.Take(MaxRows))
+            _rows.Children.Add(Row(p.Name, Number(p.Total), Number(p.Best), p.IsOwn ? "Accent" : "Ink", 12, p.IsOwn));
+        if (stats.Players.Count == 0) _rows.Children.Add(Ui.T("Noch kein Schaden", 12, "Muted"));
+    }
+
+    private static bool Same(DamageStats a, DamageStats b) => a.OwnId == b.OwnId && a.Players.SequenceEqual(b.Players);
+
+    private static Grid Row(string name, string total, string best, string brush, double size, bool bold)
+    {
+        var right1 = Ui.T(total, size, brush, bold);
+        var right2 = Ui.T(best, size, brush, bold);
+        right1.TextAlignment = right2.TextAlignment = TextAlignment.Right;
+        return Ui.Cols(RowColumns, Ui.T(name, size, brush, bold, trim: true), right1, right2);
     }
 
     public static string Number(long value) => value.ToString("N0", German);

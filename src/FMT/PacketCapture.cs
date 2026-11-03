@@ -26,6 +26,8 @@ public sealed class PacketCapture : IDisposable
     private readonly Dictionary<Flow, TcpStream> _streams = [];
     private readonly Dictionary<uint, DamageMeter> _meters = [];
     private readonly Queue<LoggedPacket> _log = new();
+    private readonly Dictionary<long, string> _known;
+    private volatile HashSet<string> _hidden;
     private volatile Dictionary<Flow, uint> _flows = [];
     private Timer? _tableTimer;
     private uint _lastPid;
@@ -34,6 +36,15 @@ public sealed class PacketCapture : IDisposable
     private long _outgoing;
     private long _packets;
     private DateTime _startedAt;
+
+    public PacketCapture(IDictionary<long, string> myCharacters, IEnumerable<string> hidden)
+    {
+        _known = new Dictionary<long, string>(myCharacters);
+        _hidden = new HashSet<string>(hidden, StringComparer.Ordinal);
+    }
+
+    // Raised on a capture thread.
+    public event Action<long, string>? OwnCharacterFound;
 
     public bool IsRunning { get; private set; }
     public string? Error { get; private set; }
@@ -167,17 +178,50 @@ public sealed class PacketCapture : IDisposable
     {
         var now = DateTime.Now;
         Interlocked.Increment(ref _packets);
-        if (!_meters.TryGetValue(pid, out var meter)) _meters[pid] = meter = new DamageMeter();
+        if (!_meters.TryGetValue(pid, out var meter)) _meters[pid] = meter = new DamageMeter(_known);
         meter.Handle(packet, now);
+        RememberOwn(meter);
         _lastPid = pid;
+
+        var space = packet.IndexOf(' ');
+        if (_hidden.Contains(space < 0 ? packet : packet[..space])) return;
         _log.Enqueue(new LoggedPacket(now, packet));
         if (_log.Count > MaxLog) _log.Dequeue();
         Interlocked.Increment(ref _logVersion);
     }
 
+    private void RememberOwn(DamageMeter meter)
+    {
+        if (meter.OwnId is not { } id) return;
+        var name = meter.OwnName;
+        if (_known.TryGetValue(id, out var saved) && (saved == name || name.StartsWith("Spieler ", StringComparison.Ordinal))) return;
+        _known[id] = name;
+        OwnCharacterFound?.Invoke(id, name);
+    }
+
+    public void SetOwn(uint pid, long id)
+    {
+        lock (_lock)
+        {
+            if (Meter(pid) is not { } meter) return;
+            meter.SetOwn(id);
+            RememberOwn(meter);
+        }
+    }
+
+    public void SetHidden(IEnumerable<string> headers)
+    {
+        _hidden = new HashSet<string>(headers, StringComparer.Ordinal);
+    }
+
     public DamageStats Stats(uint pid)
     {
         lock (_lock) return Meter(pid)?.Stats() ?? DamageStats.Empty;
+    }
+
+    public string OwnName(uint pid)
+    {
+        lock (_lock) return Meter(pid)?.OwnName ?? "";
     }
 
     public void ResetDamage(uint pid)

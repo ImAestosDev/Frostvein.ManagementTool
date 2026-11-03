@@ -250,34 +250,65 @@ public sealed class StoreTests : IDisposable
         Assert.Equal(Store.CurrentVersion, b.Data.Version);
     }
     [Fact]
-    public void MeterCountsOnlyOwnHits()
+    public void MeterCountsEveryPlayerFromTheFirstHit()
     {
         var m = new DamageMeter();
         var t = new DateTime(2026, 11, 3, 12, 0, 0);
-        m.Handle("su 1 77 3 500 240 10 11 12 20 30 1 80 1000 0 0", t);
-        Assert.Equal(0, m.Stats().Total);
-
-        m.Handle("c_info Aestos - -1 -1 - 77 0 0 0 0 1 0 0 0 0 0 0 0", t);
+        // Nothing known yet: hits still count.
         m.Handle("su 1 77 3 500 240 10 11 12 20 30 1 80 1000 0 0", t);
         m.Handle("su 1 77 3 500 251 10 11 12 20 30 1 80 5000 3 0", t.AddSeconds(4));
         m.Handle("su 1 77 3 500 240 10 11 12 20 30 1 80 0 2 0", t);
         m.Handle("su 1 99 3 500 240 10 11 12 20 30 1 80 90000 0 0", t);
+        // Monsters and self buffs do not.
         m.Handle("su 3 77 1 77 240 10 11 12 20 30 1 80 90000 0 0", t);
         m.Handle("su 1 77 1 77 240 10 11 12 20 30 1 100 90000 0 0", t);
 
+        var before = m.Stats();
+        Assert.Null(before.OwnId);
+        Assert.Equal([99L, 77L], before.Players.Select(p => p.Id));
+        Assert.Equal("Spieler 77", before.Players[1].Name);
+
+        m.Handle("in 1 Mitspieler - 99 20 30 2 0 0 0", t);
+        m.Handle("c_info Aestos - -1 -1 - 77 0 0 0 0 1 0 0 0 0 0 0 0", t);
+
         var s = m.Stats();
-        Assert.Equal("Aestos", s.Name);
-        Assert.Equal(6000, s.Total);
-        Assert.Equal(5000, s.Best);
-        Assert.Equal(251, s.BestSkill);
-        Assert.Equal(2, s.Hits);
-        Assert.Equal(1, s.Misses);
-        Assert.Equal(1500, s.PerSecond);
+        Assert.Equal("Mitspieler", s.Players[0].Name);
+        var own = s.Own!;
+        Assert.Equal("Aestos", own.Name);
+        Assert.Equal(6000, own.Total);
+        Assert.Equal(5000, own.Best);
+        Assert.Equal(251, own.BestSkill);
+        Assert.Equal(2, own.Hits);
+        Assert.Equal(1, own.Misses);
+        Assert.Equal(1500, own.PerSecond);
+        Assert.Equal(96000, s.MapTotal);
 
         m.Reset();
-        Assert.Equal(0, m.Stats().Total);
-        Assert.Equal(0, m.Stats().Best);
-        Assert.Equal(77, m.Stats().CharacterId);
+        Assert.Empty(m.Stats().Players);
+        Assert.Equal(77, m.Stats().OwnId);
+    }
+
+    [Fact]
+    public void MeterFindsOwnCharacterWithoutMapChange()
+    {
+        var t = new DateTime(2026, 11, 3, 12, 0, 0);
+
+        var byCond = new DamageMeter();
+        byCond.Handle("cond 2 500 0 0 10", t);
+        Assert.Null(byCond.OwnId);
+        byCond.Handle("cond 1 77 0 0 10", t);
+        Assert.Equal(77, byCond.OwnId);
+
+        var bySavedId = new DamageMeter(new Dictionary<long, string> { [77] = "Aestos" });
+        bySavedId.Handle("su 1 99 3 500 240 10 11 12 20 30 1 80 1000 0 0", t);
+        Assert.Null(bySavedId.OwnId);
+        bySavedId.Handle("su 1 77 3 500 240 10 11 12 20 30 1 80 1000 0 0", t);
+        Assert.Equal("Aestos", bySavedId.Stats().Own!.Name);
+
+        var byClick = new DamageMeter();
+        byClick.Handle("su 1 77 3 500 240 10 11 12 20 30 1 80 1000 0 0", t);
+        byClick.SetOwn(77);
+        Assert.Equal(1000, byClick.Stats().Own!.Total);
     }
 
     private static byte[] PlainFrame(string text) =>

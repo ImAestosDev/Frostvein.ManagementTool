@@ -39,14 +39,19 @@ internal static class Shots
         Capture(panel, Path.Combine(outDir, "4b-nostaler.png"), () => panel.ShowPage("cat:" + store.Data.Categories.First(c => c.Name == "NosTaler").Id, false));
         Capture(panel, Path.Combine(outDir, "4c-notes.png"), () => panel.ShowPage("cat:" + store.Data.Categories.First(c => c.Name == "Notizen").Id, false));
         Capture(panel, Path.Combine(outDir, "4d-damage-off.png"), () => panel.ShowPage("damage", false));
-        var capture = new PacketCapture();
+        var capture = new PacketCapture(new Dictionary<long, string>(), state.S.PacketLogHidden);
         capture.GetType().GetProperty(nameof(PacketCapture.IsRunning))!.SetValue(capture, true);
         panel.Capture = capture;
         capture.Feed(1, "c_info Aestos - -1 -1 - 77 0 0 0 0 1 0 0 0 0 0 0 0");
+        capture.Feed(1, "in 1 Mitspieler - 99 20 30 2 0 0 0");
         foreach (var damage in new[] { 1200, 4800, 45123, 3900 })
             capture.Feed(1, $"su 1 77 3 500 240 10 11 12 20 30 1 80 {damage} 0 0");
         capture.Feed(1, "su 1 77 3 500 240 10 11 12 20 30 1 80 0 2 0");
-        capture.Feed(1, "su 1 99 3 500 240 10 11 12 20 30 1 80 999999 0 0");
+        capture.Feed(1, "su 1 99 3 500 240 10 11 12 20 30 1 80 99999 0 0");
+        capture.Feed(1, "su 1 123 3 500 240 10 11 12 20 30 1 80 7777 0 0");
+        capture.Feed(1, "mv 3 3071 131 42 5");
+        capture.Feed(1, "drop 1046 900 20 30 5000 0 -1");
+        capture.Feed(1, "get 1 77 900 0");
         Capture(panel, Path.Combine(outDir, "4e-damage.png"), () => panel.ShowPage("damage", false));
         Capture(panel, Path.Combine(outDir, "4f-packets.png"), () => panel.ShowPage("packets", false));
         RenderCounter(Path.Combine(outDir, "counter.png"), capture);

@@ -237,7 +237,7 @@ public sealed class PanelWindow : Window
         if (key == "dailies") return new DailiesView(_state);
         if (key == "landoflife" && _state.S.LandOfLife.Visible) return new LandOfLifeView(_state);
         if (key == "damage") return new DamageView(_state, this);
-        if (key == "packets") return new PacketLogView(this);
+        if (key == "packets") return new PacketLogView(_state, this);
         if (key == "settings") return new SettingsView(_state, () => HotkeysChanged?.Invoke(), Updater);
         if (key == "layout") return new LayoutView(_state, this);
         if (key.StartsWith("cat:", StringComparison.Ordinal) && _state.Data.FindCategory(key[4..]) != null)
