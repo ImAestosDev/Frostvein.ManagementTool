@@ -110,6 +110,7 @@ public sealed class Settings
     public bool CaptureEnabled { get; set; }
     public bool ShowDamageOverlay { get; set; } = true;
     public DamageMode DamageMode { get; set; } = DamageMode.Single;
+    public bool DamageCounterSmall { get; set; }
     public Dictionary<long, string> MyCharacters { get; set; } = [];
     public List<string> PacketLogHidden { get; set; } = ["su", "mv", "stat", "bf", "pst", "eff"];
     public bool PacketLogItemsOnly { get; set; }

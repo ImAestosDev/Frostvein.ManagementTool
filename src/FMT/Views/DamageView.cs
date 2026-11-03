@@ -70,6 +70,7 @@ public sealed class DamageView : PageView
             _list = Ui.Col(8, _listTitle, Ui.Card(_players, 6));
             Ui.AddTo(col, _list, 14);
             Ui.AddTo(col, overlay, 10);
+            Ui.AddTo(col, Ui.Check("Zähler klein anzeigen", _state.S.DamageCounterSmall, v => { _state.S.DamageCounterSmall = v; _state.Touch(); }), 6);
             Ui.AddTo(col, _status, 10);
             Ui.AddTo(col, _diagnostics, 4);
             _firewall = FirewallCard();

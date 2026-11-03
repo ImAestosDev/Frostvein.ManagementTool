@@ -58,7 +58,8 @@ internal static class Shots
         {
             state.S.DamageMode = mode;
             Capture(panel, Path.Combine(outDir, $"4e-damage-{mode}.png"), () => panel.ShowPage("damage", false));
-            RenderCounter(Path.Combine(outDir, $"counter-{mode}.png"), capture, mode);
+            RenderCounter(Path.Combine(outDir, $"counter-{mode}.png"), capture, mode, false);
+            RenderCounter(Path.Combine(outDir, $"counter-{mode}-small.png"), capture, mode, true);
         }
         Capture(panel, Path.Combine(outDir, "4f-packets.png"), () => panel.ShowPage("packets", false));
         Capture(panel, Path.Combine(outDir, "5-layout.png"), () => panel.ShowPage("layout", false));
@@ -108,10 +109,10 @@ internal static class Shots
         png.Save(fs);
     }
 
-    private static void RenderCounter(string file, PacketCapture capture, DamageMode mode)
+    private static void RenderCounter(string file, PacketCapture capture, DamageMode mode, bool small)
     {
-        var card = new DamageCard(() => { }, _ => { });
-        card.Show(capture.Stats(1), mode);
+        var card = new DamageCard(() => { }, _ => { }, () => { });
+        card.Show(capture.Stats(1), mode, small);
         card.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
         card.Arrange(new Rect(card.DesiredSize));
         card.UpdateLayout();
