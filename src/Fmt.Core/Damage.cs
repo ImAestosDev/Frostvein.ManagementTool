@@ -5,12 +5,33 @@ namespace Fmt.Core;
 
 public sealed record PlayerDamage(long Id, string Name, bool IsOwn, long Total, long Best, int BestSkill, int Hits, int Misses, double PerSecond);
 
-public sealed record DamageStats(long? OwnId, IReadOnlyList<PlayerDamage> Players)
+public enum DamageMode { Single, Group, Raid }
+
+public sealed record DamageStats(long? OwnId, IReadOnlyList<PlayerDamage> Players, IReadOnlySet<long>? GroupIds = null)
 {
+    public const int GroupSlots = 3, RaidSlots = 20;
+
     public static readonly DamageStats Empty = new(null, []);
 
     public PlayerDamage? Own => Players.FirstOrDefault(p => p.IsOwn);
     public long MapTotal => Players.Sum(p => p.Total);
+
+    // The table for a mode, best first; the own row always keeps a slot.
+    public List<PlayerDamage> Table(DamageMode mode)
+    {
+        if (mode == DamageMode.Single) return Own is { } me ? [me] : [];
+        var slots = mode == DamageMode.Group ? GroupSlots : RaidSlots;
+        var pool = mode == DamageMode.Group && GroupIds is { Count: > 0 } group
+            ? Players.Where(p => p.IsOwn || group.Contains(p.Id))
+            : Players;
+        var table = pool.Take(slots).ToList();
+        if (Own is { } own && !table.Contains(own))
+        {
+            if (table.Count == slots) table.RemoveAt(slots - 1);
+            table.Add(own);
+        }
+        return table;
+    }
 }
 
 // Character ids never change, so a name once seen stays valid across sessions.
@@ -79,6 +100,7 @@ public sealed class DamageMeter(IReadOnlyDictionary<long, string>? known = null,
 
     private readonly Dictionary<long, Tally> _players = [];
     private readonly NameBook _names = names ?? new NameBook();
+    private readonly HashSet<long> _group = [];
 
     public long? OwnId { get; private set; }
     public string OwnName => OwnId is { } id ? NameOf(id) : "";
@@ -90,7 +112,7 @@ public sealed class DamageMeter(IReadOnlyDictionary<long, string>? known = null,
         else if (packet.StartsWith("c_info ", StringComparison.Ordinal)) HandleInfo(packet);
         else if (packet.StartsWith("cond 1 ", StringComparison.Ordinal)) HandleCond(packet);
         else if (packet.StartsWith("spk 1 ", StringComparison.Ordinal)) HandleChat(packet);
-        else if (packet.StartsWith("pinit ", StringComparison.Ordinal)) HandleLists(packet, GroupId, GroupName, GroupTag);
+        else if (packet.StartsWith("pinit ", StringComparison.Ordinal)) HandleGroup(packet);
         else if (packet.StartsWith("finit ", StringComparison.Ordinal)) HandleLists(packet, 0, FriendName, null);
         else if (packet.StartsWith("gmbr ", StringComparison.Ordinal)) HandleLists(packet, 0, FamilyName, null);
     }
@@ -99,6 +121,17 @@ public sealed class DamageMeter(IReadOnlyDictionary<long, string>? known = null,
     {
         var t = packet.Split(' ');
         if (t.Length > SpkName && Id(t[SpkId], out var id)) _names.Set(id, t[SpkName]);
+    }
+
+    private void HandleGroup(string packet)
+    {
+        HandleLists(packet, GroupId, GroupName, GroupTag);
+        _group.Clear();
+        foreach (var entry in packet.Split(' ').Skip(1))
+        {
+            var parts = entry.Split('|');
+            if (parts.Length > GroupId && parts[0] == GroupTag && Id(parts[GroupId], out var id)) _group.Add(id);
+        }
     }
 
     // Group, friend and family lists carry "id|...|name" entries.
@@ -188,6 +221,6 @@ public sealed class DamageMeter(IReadOnlyDictionary<long, string>? known = null,
             })
             .OrderByDescending(p => p.Total).ThenBy(p => p.Id)
             .ToList();
-        return new DamageStats(OwnId, players);
+        return new DamageStats(OwnId, players, _group.ToHashSet());
     }
 }

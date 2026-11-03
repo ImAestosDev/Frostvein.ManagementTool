@@ -52,9 +52,15 @@ internal static class Shots
         capture.Feed(1, "mv 3 3071 131 42 5");
         capture.Feed(1, "drop 1046 900 20 30 5000 0 -1");
         capture.Feed(1, "get 1 77 900 0");
-        Capture(panel, Path.Combine(outDir, "4e-damage.png"), () => panel.ShowPage("damage", false));
+        for (var i = 0; i < 22; i++)
+            capture.Feed(1, $"su 1 {1000 + i} 3 500 240 10 11 12 20 30 1 80 {90000 - i * 3000} 0 0");
+        foreach (var mode in Enum.GetValues<DamageMode>())
+        {
+            state.S.DamageMode = mode;
+            Capture(panel, Path.Combine(outDir, $"4e-damage-{mode}.png"), () => panel.ShowPage("damage", false));
+            RenderCounter(Path.Combine(outDir, $"counter-{mode}.png"), capture, mode);
+        }
         Capture(panel, Path.Combine(outDir, "4f-packets.png"), () => panel.ShowPage("packets", false));
-        RenderCounter(Path.Combine(outDir, "counter.png"), capture);
         Capture(panel, Path.Combine(outDir, "5-layout.png"), () => panel.ShowPage("layout", false));
         Capture(panel, Path.Combine(outDir, "6-settings.png"), () => panel.ShowPage("settings", false));
         Capture(panel, Path.Combine(outDir, "7-light.png"), () =>
@@ -102,10 +108,10 @@ internal static class Shots
         png.Save(fs);
     }
 
-    private static void RenderCounter(string file, PacketCapture capture)
+    private static void RenderCounter(string file, PacketCapture capture, DamageMode mode)
     {
-        var card = new DamageCard(() => { });
-        card.Show(capture.Stats(1));
+        var card = new DamageCard(() => { }, () => { });
+        card.Show(capture.Stats(1), mode);
         card.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
         card.Arrange(new Rect(card.DesiredSize));
         card.UpdateLayout();

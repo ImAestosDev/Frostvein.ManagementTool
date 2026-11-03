@@ -109,6 +109,7 @@ public sealed class Settings
     public bool AutoUpdate { get; set; } = true;
     public bool CaptureEnabled { get; set; }
     public bool ShowDamageOverlay { get; set; } = true;
+    public DamageMode DamageMode { get; set; } = DamageMode.Single;
     public Dictionary<long, string> MyCharacters { get; set; } = [];
     public List<string> PacketLogHidden { get; set; } = ["su", "mv", "stat", "bf", "pst", "eff"];
     public bool PacketLogItemsOnly { get; set; }

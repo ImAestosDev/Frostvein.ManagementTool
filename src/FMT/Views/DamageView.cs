@@ -17,8 +17,12 @@ public sealed class DamageView : PageView
     private readonly TextBlock _status = Ui.T("", 12, "Muted", wrap: true);
     private readonly TextBlock _diagnostics = Ui.T("", 12, "Muted", wrap: true);
     private readonly StackPanel _players = new();
+    private readonly TextBlock _listTitle = Ui.T("", 14, bold: true);
     private FrameworkElement? _firewall;
-    private DamageStats? _shownPlayers;
+    private FrameworkElement? _list;
+    private List<PlayerDamage>? _shownPlayers;
+    private long? _shownOwn;
+    private DamageMode _builtMode;
 
     public DamageView(AppState state, PanelWindow shell)
     {
@@ -45,14 +49,26 @@ public sealed class DamageView : PageView
             var stop = Ui.Btn("Mitlesen stoppen", () => { _shell.StopCapture?.Invoke(); Refresh(); }, "Ghost");
             stop.Margin = new Thickness(6, 0, 0, 0);
             var overlay = Ui.Check("Kleiner Zähler über dem Spiel", _state.S.ShowDamageOverlay, v => { _state.S.ShowDamageOverlay = v; _state.TouchSettings(); });
+            _builtMode = _state.S.DamageMode;
+            var mode = Ui.Combo(
+                [("Single Mode: nur ich", DamageMode.Single), ("Group Mode: bis zu 3 Plätze", DamageMode.Group), ("Raid Mode: bis zu 20 Plätze", DamageMode.Raid)],
+                _state.S.DamageMode,
+                v =>
+                {
+                    _state.S.DamageMode = v;
+                    _builtMode = v;
+                    _state.Touch();
+                    Update();
+                });
+            Ui.AddTo(col, mode, 10);
             Ui.AddTo(col, Ui.Card(Ui.Col(2, Ui.T("Dein Schaden", 12, "Muted"), _total)), 10);
             Ui.AddTo(col, new UniformRow(10,
                 Ui.Card(Ui.Col(2, Ui.T("Dein Best Hit", 12, "Muted"), _best, _bestSkill)),
                 Ui.Card(Ui.Col(2, Ui.T("Pro Sekunde", 12, "Muted"), _perSecond)),
                 Ui.Card(Ui.Col(2, Ui.T("Treffer", 12, "Muted"), _hits, _misses))), 10);
             Ui.AddTo(col, Ui.Row(0, reset, stop), 10);
-            Ui.AddTo(col, Ui.T("Alle Spieler auf der Map", 14, bold: true), 14);
-            Ui.AddTo(col, Ui.Card(_players, 6), 8);
+            _list = Ui.Col(8, _listTitle, Ui.Card(_players, 6));
+            Ui.AddTo(col, _list, 14);
             Ui.AddTo(col, overlay, 10);
             Ui.AddTo(col, _status, 10);
             Ui.AddTo(col, _diagnostics, 4);
@@ -67,7 +83,7 @@ public sealed class DamageView : PageView
     // The value blocks survive page rebuilds.
     private void Detach()
     {
-        foreach (var t in new[] { _total, _best, _bestSkill, _perSecond, _hits, _misses, _status, _diagnostics })
+        foreach (var t in new[] { _total, _best, _bestSkill, _perSecond, _hits, _misses, _status, _diagnostics, _listTitle })
             (t.Parent as Panel)?.Children.Remove(t);
         if (_players.Parent is Border b) b.Child = null;
     }
@@ -102,6 +118,12 @@ public sealed class DamageView : PageView
     private void Update()
     {
         if (_shell.Capture is not { IsRunning: true } capture) return;
+        // The overlay can switch the mode too.
+        if (_builtMode != _state.S.DamageMode)
+        {
+            Refresh();
+            return;
+        }
         _diagnostics.Text = $"Spielverbindungen {capture.Connections} · eingehend {capture.Incoming} · ausgehend {capture.Outgoing} · erkannte Pakete {capture.Packets}";
         if (_firewall != null) _firewall.Visibility = capture.LooksBlocked ? Visibility.Visible : Visibility.Collapsed;
 
@@ -121,20 +143,30 @@ public sealed class DamageView : PageView
 
     private void FillPlayers(PacketCapture capture, DamageStats s)
     {
-        if (_shownPlayers != null && _shownPlayers.OwnId == s.OwnId && _shownPlayers.Players.SequenceEqual(s.Players)) return;
-        _shownPlayers = s;
+        var mode = _state.S.DamageMode;
+        // Single needs the list only while the own character is unknown.
+        var pickOwn = mode == DamageMode.Single && s.OwnId == null;
+        if (_list != null) _list.Visibility = mode == DamageMode.Single && !pickOwn ? Visibility.Collapsed : Visibility.Visible;
+        _listTitle.Text = pickOwn ? "Wer bist du?" : mode == DamageMode.Group ? "Gruppe" : "Raid";
+        var table = pickOwn ? s.Players.ToList() : s.Table(mode);
+
+        if (_shownPlayers != null && _shownOwn == s.OwnId && _shownPlayers.SequenceEqual(table)) return;
+        _shownPlayers = table;
+        _shownOwn = s.OwnId;
         _players.Children.Clear();
-        if (s.Players.Count == 0)
+        if (table.Count == 0)
         {
             var empty = Ui.T("Noch kein Schaden gezählt.", 13, "Muted");
             empty.Margin = new Thickness(10, 6, 10, 6);
             _players.Children.Add(empty);
             return;
         }
-        _players.Children.Add(PlayerRow("Spieler", "Schaden", "Anteil", "Best Hit", "Muted", 12, false, null));
-        var total = Math.Max(1, s.MapTotal);
-        foreach (var p in s.Players)
+        _players.Children.Add(PlayerRow("", "Spieler", "Schaden", "Anteil", "Best Hit", "Muted", 12, false, null));
+        var total = Math.Max(1, table.Sum(p => p.Total));
+        var place = 0;
+        foreach (var p in table)
         {
+            place++;
             // Reacts on press: the list rebuilds while people keep hitting.
             FrameworkElement? mark = null;
             if (s.OwnId == null)
@@ -146,11 +178,11 @@ public sealed class DamageView : PageView
                 mark = me;
             }
             var share = $"{p.Total * 100.0 / total:0} %";
-            _players.Children.Add(PlayerRow(p.Name, DamageCard.Number(p.Total), share, DamageCard.Number(p.Best), p.IsOwn ? "Accent" : "Ink", 13, p.IsOwn, mark));
+            _players.Children.Add(PlayerRow($"{place}.", p.Name, DamageCard.Number(p.Total), share, DamageCard.Number(p.Best), p.IsOwn ? "Accent" : "Ink", 13, p.IsOwn, mark));
         }
     }
 
-    private static Border PlayerRow(string name, string total, string share, string best, string brush, double size, bool bold, FrameworkElement? mark)
+    private static Border PlayerRow(string place, string name, string total, string share, string best, string brush, double size, bool bold, FrameworkElement? mark)
     {
         var totalText = Ui.T(total, size, brush, bold);
         var shareText = Ui.T(share, size, brush, bold);
@@ -159,7 +191,7 @@ public sealed class DamageView : PageView
         return new Border
         {
             Padding = new Thickness(10, 5, 10, 5),
-            Child = Ui.Cols("*,Auto,96,56,84", Ui.T(name, size, brush, bold, trim: true), mark, totalText, shareText, bestText),
+            Child = Ui.Cols("26,*,Auto,96,56,84", Ui.T(place, size, "Muted"), Ui.T(name, size, brush, bold, trim: true), mark, totalText, shareText, bestText),
         };
     }
 }

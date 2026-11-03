@@ -334,6 +334,37 @@ public sealed class StoreTests : IDisposable
     }
 
     [Fact]
+    public void ModesPickTheirTables()
+    {
+        var t = new DateTime(2026, 11, 3, 12, 0, 0);
+        var m = new DamageMeter();
+        m.Handle("c_info Ich - -1 -1 - 500 0 0 0 0 1 0 0 0 0 0 0 0", t);
+        m.Handle("su 1 500 3 9 240 10 11 12 20 30 1 80 10 0 0", t);
+        for (var i = 1; i <= 25; i++)
+            m.Handle($"su 1 {i} 3 9 240 10 11 12 20 30 1 80 {1000 - i} 0 0", t);
+
+        var s = m.Stats();
+        Assert.Equal([500L], s.Table(DamageMode.Single).Select(p => p.Id));
+
+        // Strangers are better here, the own row still keeps the last slot.
+        Assert.Equal([1L, 2L, 500L], s.Table(DamageMode.Group).Select(p => p.Id));
+        var raid = s.Table(DamageMode.Raid);
+        Assert.Equal(20, raid.Count);
+        Assert.Equal(500, raid[^1].Id);
+
+        // A known group hides strangers.
+        m.Handle("pinit 2 1|500|1|99|Ich|5|0|1|0|45|0|0|0 1|7|2|99|Freund|5|0|1|0|45|0|0|0", t);
+        Assert.Equal([7L, 500L], m.Stats().Table(DamageMode.Group).Select(p => p.Id));
+
+        // Leaving the group: back to the best on the map.
+        m.Handle("pinit 0", t);
+        Assert.Equal(3, m.Stats().Table(DamageMode.Group).Count);
+
+        var nobody = new DamageMeter().Stats();
+        Assert.Empty(nobody.Table(DamageMode.Single));
+    }
+
+    [Fact]
     public void MeterFindsOwnCharacterWithoutMapChange()
     {
         var t = new DateTime(2026, 11, 3, 12, 0, 0);
