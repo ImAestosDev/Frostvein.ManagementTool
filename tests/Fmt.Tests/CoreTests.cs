@@ -362,6 +362,10 @@ public sealed class StoreTests : IDisposable
 
         var nobody = new DamageMeter().Stats();
         Assert.Empty(nobody.Table(DamageMode.Single));
+
+        Assert.Equal(1, DamageStats.Slots(DamageMode.Single));
+        Assert.Equal(3, DamageStats.Slots(DamageMode.Group));
+        Assert.Equal(20, DamageStats.Slots(DamageMode.Raid));
     }
 
     [Fact]

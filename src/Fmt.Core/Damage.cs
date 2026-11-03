@@ -9,9 +9,14 @@ public enum DamageMode { Single, Group, Raid }
 
 public sealed record DamageStats(long? OwnId, IReadOnlyList<PlayerDamage> Players, IReadOnlySet<long>? GroupIds = null)
 {
-    public const int GroupSlots = 3, RaidSlots = 20;
-
     public static readonly DamageStats Empty = new(null, []);
+
+    public static int Slots(DamageMode mode) => mode switch
+    {
+        DamageMode.Raid => 20,
+        DamageMode.Group => 3,
+        _ => 1,
+    };
 
     public PlayerDamage? Own => Players.FirstOrDefault(p => p.IsOwn);
     public long MapTotal => Players.Sum(p => p.Total);
@@ -20,7 +25,7 @@ public sealed record DamageStats(long? OwnId, IReadOnlyList<PlayerDamage> Player
     public List<PlayerDamage> Table(DamageMode mode)
     {
         if (mode == DamageMode.Single) return Own is { } me ? [me] : [];
-        var slots = mode == DamageMode.Group ? GroupSlots : RaidSlots;
+        var slots = Slots(mode);
         var pool = mode == DamageMode.Group && GroupIds is { Count: > 0 } group
             ? Players.Where(p => p.IsOwn || group.Contains(p.Id))
             : Players;

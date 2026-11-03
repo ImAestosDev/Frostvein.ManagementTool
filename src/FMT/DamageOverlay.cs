@@ -7,60 +7,64 @@ namespace Fmt.App;
 // Compact player list, shared by the overlay and dev renders.
 public sealed class DamageCard : Border
 {
-    private const string RowColumns = "20,100,84,70";
+    private const string RowColumns = "30,160,116,96";
+    private const double RowHeight = 24;
     private static readonly CultureInfo German = new("de-DE");
+    private static readonly (string Label, DamageMode Mode)[] Modes =
+        [("Raid", DamageMode.Raid), ("Single", DamageMode.Single), ("Group", DamageMode.Group)];
 
     private readonly StackPanel _rows = new();
-    private readonly TextBlock _modeLabel = Ui.T("", 11, "Accent", bold: true);
+    private readonly StackPanel _settings = new() { Width = 76, Margin = new Thickness(0, 0, 12, 0) };
+    private readonly Action _reset;
+    private readonly Action<DamageMode> _setMode;
     private List<PlayerDamage>? _shown;
-    private DamageMode _shownMode;
+    private DamageMode? _shownMode;
 
-    public static string ModeName(DamageMode mode) => mode switch
+    public DamageCard(Action reset, Action<DamageMode> setMode)
     {
-        DamageMode.Raid => "Raid",
-        DamageMode.Group => "Group",
-        _ => "Single",
-    };
-
-    public DamageCard(Action reset, Action nextMode)
-    {
-        Padding = new Thickness(10, 5, 4, 6);
+        _reset = reset;
+        _setMode = setMode;
+        Padding = new Thickness(8);
         BorderThickness = new Thickness(1);
         Cursor = Cursors.SizeAll;
         SetResourceReference(BackgroundProperty, "Bg");
         SetResourceReference(BorderBrushProperty, "Line");
         SetResourceReference(CornerRadiusProperty, "CornerSmall");
-        var button = Ui.IconBtn(Ui.G.Undo, "Zähler zurücksetzen", reset, 12);
-        var mode = Ui.Glyph(Ui.G.Forward, 10, "Accent");
-        var modeButton = new Button
-        {
-            Style = (Style)Application.Current.Resources["Ghost"],
-            Content = Ui.Row(4, _modeLabel, mode),
-            ToolTip = "Modus wechseln: Single, Group, Raid",
-        };
-        modeButton.Click += (_, _) => nextMode();
-        var buttons = Ui.Row(0, modeButton, button);
-        buttons.VerticalAlignment = VerticalAlignment.Top;
-        buttons.Margin = new Thickness(6, 0, 0, 0);
-        Child = Ui.Cols("*,Auto", _rows, buttons);
+        Child = Ui.Cols("Auto,*", _settings, _rows);
         Show(DamageStats.Empty, DamageMode.Single);
     }
 
     public void Show(DamageStats stats, DamageMode mode)
     {
         var table = stats.Table(mode);
+        if (mode != _shownMode) BuildSettings(mode);
         if (_shown != null && mode == _shownMode && _shown.SequenceEqual(table)) return;
         _shown = table;
         _shownMode = mode;
-        _modeLabel.Text = ModeName(mode);
+
+        // Every slot of the mode is always there, so the table size follows the mode.
         _rows.Children.Clear();
-        _rows.Children.Add(Row("", "Spieler", "Schaden", "Best Hit", "Muted", 10, false));
-        for (var i = 0; i < table.Count; i++)
+        _rows.Children.Add(Row("", "Spieler", "Schaden", "Best Hit", "Muted", 12, false));
+        for (var i = 0; i < DamageStats.Slots(mode); i++)
         {
-            var p = table[i];
-            _rows.Children.Add(Row($"{i + 1}.", p.Name, Number(p.Total), Number(p.Best), p.IsOwn ? "Accent" : "Ink", 12, p.IsOwn));
+            _rows.Children.Add(i < table.Count
+                ? Row($"{i + 1}.", table[i].Name, Number(table[i].Total), Number(table[i].Best), table[i].IsOwn ? "Accent" : "Ink", 15, table[i].IsOwn)
+                : Row($"{i + 1}.", "–", "–", "–", "Muted", 15, false));
         }
-        if (table.Count == 0) _rows.Children.Add(Ui.T("Noch kein Schaden", 12, "Muted"));
+    }
+
+    private void BuildSettings(DamageMode active)
+    {
+        _settings.Children.Clear();
+        foreach (var (label, mode) in Modes)
+            Ui.AddTo(_settings, Stretch(Ui.Btn(label, () => _setMode(mode), mode == active ? "Primary" : "Ghost")), 4);
+        Ui.AddTo(_settings, Stretch(Ui.Btn("Reset", _reset, "Ghost", Ui.G.Undo, "Zähler zurücksetzen")), 4);
+    }
+
+    private static Button Stretch(Button button)
+    {
+        button.HorizontalContentAlignment = HorizontalAlignment.Center;
+        return button;
     }
 
     private static Grid Row(string place, string name, string total, string best, string brush, double size, bool bold)
@@ -68,7 +72,9 @@ public sealed class DamageCard : Border
         var right1 = Ui.T(total, size, brush, bold);
         var right2 = Ui.T(best, size, brush, bold);
         right1.TextAlignment = right2.TextAlignment = TextAlignment.Right;
-        return Ui.Cols(RowColumns, Ui.T(place, size, "Muted"), Ui.T(name, size, brush, bold, trim: true), right1, right2);
+        var row = Ui.Cols(RowColumns, Ui.T(place, size, "Muted"), Ui.T(name, size, brush, bold, trim: true), right1, right2);
+        row.Height = RowHeight;
+        return row;
     }
 
     public static string Number(long value) => value.ToString("N0", German);
@@ -101,10 +107,11 @@ public sealed class DamageOverlay : Window
         FontFamily = new FontFamily("Segoe UI Variable Text, Segoe UI");
         Title = "FMT Damage";
 
-        _card = new DamageCard(() => _capture.ResetDamage(GamePid()), () =>
+        _card = new DamageCard(() => _capture.ResetDamage(GamePid()), mode =>
         {
-            _state.S.DamageMode = (DamageMode)(((int)_state.S.DamageMode + 1) % Enum.GetValues<DamageMode>().Length);
+            _state.S.DamageMode = mode;
             _state.Touch();
+            _card!.Show(_capture.Stats(GamePid()), mode);
         });
         _card.MouseLeftButtonDown += OnPress;
         Content = _card;

@@ -110,7 +110,7 @@ internal static class Shots
 
     private static void RenderCounter(string file, PacketCapture capture, DamageMode mode)
     {
-        var card = new DamageCard(() => { }, () => { });
+        var card = new DamageCard(() => { }, _ => { });
         card.Show(capture.Stats(1), mode);
         card.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
         card.Arrange(new Rect(card.DesiredSize));
