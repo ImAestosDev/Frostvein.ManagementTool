@@ -250,6 +250,105 @@ public sealed class StoreTests : IDisposable
         Assert.Equal(Store.CurrentVersion, b.Data.Version);
     }
     [Fact]
+    public void MeterCountsOnlyOwnHits()
+    {
+        var m = new DamageMeter();
+        var t = new DateTime(2026, 11, 3, 12, 0, 0);
+        m.Handle("su 1 77 3 500 240 10 11 12 20 30 1 80 1000 0 0", t);
+        Assert.Equal(0, m.Stats().Total);
+
+        m.Handle("c_info Aestos - -1 -1 - 77 0 0 0 0 1 0 0 0 0 0 0 0", t);
+        m.Handle("su 1 77 3 500 240 10 11 12 20 30 1 80 1000 0 0", t);
+        m.Handle("su 1 77 3 500 251 10 11 12 20 30 1 80 5000 3 0", t.AddSeconds(4));
+        m.Handle("su 1 77 3 500 240 10 11 12 20 30 1 80 0 2 0", t);
+        m.Handle("su 1 99 3 500 240 10 11 12 20 30 1 80 90000 0 0", t);
+        m.Handle("su 3 77 1 77 240 10 11 12 20 30 1 80 90000 0 0", t);
+        m.Handle("su 1 77 1 77 240 10 11 12 20 30 1 100 90000 0 0", t);
+
+        var s = m.Stats();
+        Assert.Equal("Aestos", s.Name);
+        Assert.Equal(6000, s.Total);
+        Assert.Equal(5000, s.Best);
+        Assert.Equal(251, s.BestSkill);
+        Assert.Equal(2, s.Hits);
+        Assert.Equal(1, s.Misses);
+        Assert.Equal(1500, s.PerSecond);
+
+        m.Reset();
+        Assert.Equal(0, m.Stats().Total);
+        Assert.Equal(0, m.Stats().Best);
+        Assert.Equal(77, m.Stats().CharacterId);
+    }
+
+    private static byte[] PlainFrame(string text) =>
+        [(byte)text.Length, .. text.Select(c => (byte)(c ^ 0xFF)), 0xFF];
+
+    [Fact]
+    public void DecodesPlainAndPackedRuns()
+    {
+        // "su " plain, then "1 -9." packed: nibbles 5,1 / 2,13 / 3,0.
+        byte[] frame = [3, (byte)('s' ^ 0xFF), (byte)('u' ^ 0xFF), (byte)(' ' ^ 0xFF), 0x85, 0x51, 0x2D, 0x30];
+        Assert.Equal("su 1 -9.", WorldDecoder.Decode(frame));
+    }
+
+    [Fact]
+    public void StreamJoinsSplitAndReorderedSegments()
+    {
+        byte[] first = PlainFrame("first");
+        byte[] a = PlainFrame("alpha");
+        byte[] b = PlainFrame("beta");
+        byte[] all = [.. first, .. a, .. b];
+        var cut1 = first.Length + 2;
+        var cut2 = first.Length + a.Length + 3;
+        var output = new List<string>();
+        var s = new TcpStream();
+
+        s.Push(uint.MaxValue - 2, all.AsSpan(0, cut1), output);
+        s.Push(unchecked(uint.MaxValue - 2 + (uint)cut2), all.AsSpan(cut2), output);
+        Assert.Empty(output);
+        s.Push(unchecked(uint.MaxValue - 2 + (uint)cut1), all.AsSpan(cut1, cut2 - cut1), output);
+        // Retransmission must not count twice.
+        s.Push(unchecked(uint.MaxValue - 2 + (uint)cut1), all.AsSpan(cut1, cut2 - cut1), output);
+
+        // The first frame may start mid packet, so it is skipped.
+        Assert.Equal(["alpha", "beta"], output);
+    }
+
+    [Fact]
+    public void StreamDropsGarbageFrames()
+    {
+        var output = new List<string>();
+        var s = new TcpStream();
+        byte[] data = [.. PlainFrame("x"), 2, 0xFE, 0xFD, 0xFF, .. PlainFrame("ok 1")];
+        s.Push(1, data, output);
+        Assert.Equal(["ok 1"], output);
+    }
+
+    [Fact]
+    public void ParsesIpv4TcpSegment()
+    {
+        byte[] p = new byte[46];
+        p[0] = 0x45;
+        p[3] = 46;
+        p[9] = 6;
+        p[12] = 10; p[13] = 0; p[14] = 0; p[15] = 1;
+        p[20] = 0x10; p[21] = 0x20;
+        p[22] = 0xC0; p[23] = 0x01;
+        p[24] = 0; p[25] = 0; p[26] = 1; p[27] = 2;
+        p[32] = 0x50;
+        Assert.True(IpPacket.TryParseTcp(p, out var s));
+        Assert.Equal(0x1020, s.SourcePort);
+        Assert.Equal(0xC001, s.DestinationPort);
+        Assert.Equal(258u, s.Sequence);
+        Assert.Equal(40, s.PayloadOffset);
+        Assert.Equal(6, s.PayloadLength);
+        Assert.Equal(BitConverter.ToUInt32([10, 0, 0, 1]), s.SourceAddress);
+
+        p[9] = 17;
+        Assert.False(IpPacket.TryParseTcp(p, out _));
+    }
+
+    [Fact]
     public void MigrationMovesTypedAmountsToEuroField()
     {
         var a = new Store(DataFile);

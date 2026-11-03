@@ -21,6 +21,8 @@ public partial class App : Application
     private PillWindow? _pill;
     private AppState? _state;
     private Updater? _updater;
+    private PacketCapture? _capture;
+    private DamageOverlay? _damageOverlay;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -43,8 +45,18 @@ public partial class App : Application
         if (waitIndex >= 0 && waitIndex + 1 < args.Length && int.TryParse(args[waitIndex + 1], out var oldPid)) WaitForExit(oldPid);
 
         // A second start just toggles the running instance.
-        _mutex = new Mutex(true, MutexName, out var isFirst);
-        _signal = new EventWaitHandle(false, EventResetMode.AutoReset, SignalName);
+        bool isFirst;
+        try
+        {
+            _mutex = new Mutex(true, MutexName, out isFirst);
+            _signal = new EventWaitHandle(false, EventResetMode.AutoReset, SignalName);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // An elevated FMT is running; a normal start may not signal it.
+            Shutdown();
+            return;
+        }
         if (!isFirst)
         {
             _signal.Set();
@@ -62,6 +74,11 @@ public partial class App : Application
         _updater = new Updater(_state, () => !_panel.IsOpen, Quit);
         _panel.Updater = _updater;
         _panel.Quit = Quit;
+        _capture = new PacketCapture();
+        _panel.Capture = _capture;
+        _panel.StartCapture = EnableCapture;
+        _panel.StopCapture = DisableCapture;
+        _damageOverlay = new DamageOverlay(_state, _tracker, _capture);
         _pill = new PillWindow(_state, _tracker, () => _panel.Toggle());
         _tray = new Tray(() => _panel.Toggle(), () => _panel.ShowPage("settings"), Quit);
         _hotkeys = new HotkeyManager();
@@ -71,6 +88,7 @@ public partial class App : Application
             ThemeManager.Apply(_state.S.Theme);
             _panel.ApplySettings();
             _pill.Refresh();
+            _damageOverlay.Refresh();
         };
         _state.DataChanged += () => _pill.Refresh();
         _panel.HotkeysChanged += RegisterHotkeys;
@@ -85,6 +103,12 @@ public partial class App : Application
         _panel.ApplySettings();
 
         _signalWait = ThreadPool.RegisterWaitForSingleObject(_signal, (_, _) => Dispatcher.BeginInvoke(() => _panel.Toggle()), null, -1, false);
+
+        if (_state.S.CaptureEnabled)
+        {
+            if (PacketCapture.IsAdmin) _capture.Start();
+            else if (RestartElevated()) return;
+        }
 
         if (store.LoadWarning != null) _panel.ShowAndNotify(store.LoadWarning);
         if (args.Contains(OpenArgument) || (_tracker.Target == 0 && waitIndex < 0)) _panel.Open();
@@ -105,6 +129,59 @@ public partial class App : Application
         _panel!.SyncWithGame();
         _panel.Place();
         _pill!.Refresh();
+        _damageOverlay?.Refresh();
+    }
+
+    private void EnableCapture()
+    {
+        _state!.S.CaptureEnabled = true;
+        _state.Touch();
+        if (PacketCapture.IsAdmin)
+        {
+            _capture!.Start();
+            _damageOverlay!.Refresh();
+            return;
+        }
+        if (RestartElevated()) return;
+        _state.S.CaptureEnabled = false;
+        _state.Touch();
+        _state.Notify("Ohne Admin-Rechte kann FMT nicht mitlesen.");
+    }
+
+    private void DisableCapture()
+    {
+        _state!.S.CaptureEnabled = false;
+        _state.Touch();
+        _capture!.Stop();
+        _damageOverlay!.Refresh();
+    }
+
+    // Reading the network card needs admin rights; false when the user declines.
+    private bool RestartElevated()
+    {
+        _state!.Flush();
+        _state.Store.Save();
+        var args = Environment.GetCommandLineArgs().Skip(1).ToList();
+        var wait = args.IndexOf(WaitForArgument);
+        if (wait >= 0) args.RemoveRange(wait, Math.Min(2, args.Count - wait));
+        args.Remove(OpenArgument);
+        args.AddRange([WaitForArgument, Environment.ProcessId.ToString(), OpenArgument]);
+        var start = new System.Diagnostics.ProcessStartInfo(Environment.ProcessPath!)
+        {
+            UseShellExecute = true,
+            Verb = "runas",
+            Arguments = string.Join(' ', args.Select(a => $"\"{a}\"")),
+        };
+        try
+        {
+            System.Diagnostics.Process.Start(start);
+        }
+        catch (System.ComponentModel.Win32Exception)
+        {
+            return false;
+        }
+        Quit();
+        return true;
     }
 
     private void RegisterHotkeys()
@@ -127,6 +204,7 @@ public partial class App : Application
         _state?.Flush();
         _signalWait?.Unregister(null);
         _updater?.Dispose();
+        _capture?.Dispose();
         _hotkeys?.Dispose();
         _tracker?.Dispose();
         _tray?.Dispose();

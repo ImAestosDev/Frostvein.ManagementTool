@@ -38,6 +38,18 @@ internal static class Shots
         });
         Capture(panel, Path.Combine(outDir, "4b-nostaler.png"), () => panel.ShowPage("cat:" + store.Data.Categories.First(c => c.Name == "NosTaler").Id, false));
         Capture(panel, Path.Combine(outDir, "4c-notes.png"), () => panel.ShowPage("cat:" + store.Data.Categories.First(c => c.Name == "Notizen").Id, false));
+        Capture(panel, Path.Combine(outDir, "4d-damage-off.png"), () => panel.ShowPage("damage", false));
+        var capture = new PacketCapture();
+        capture.GetType().GetProperty(nameof(PacketCapture.IsRunning))!.SetValue(capture, true);
+        panel.Capture = capture;
+        capture.Feed(1, "c_info Aestos - -1 -1 - 77 0 0 0 0 1 0 0 0 0 0 0 0");
+        foreach (var damage in new[] { 1200, 4800, 45123, 3900 })
+            capture.Feed(1, $"su 1 77 3 500 240 10 11 12 20 30 1 80 {damage} 0 0");
+        capture.Feed(1, "su 1 77 3 500 240 10 11 12 20 30 1 80 0 2 0");
+        capture.Feed(1, "su 1 99 3 500 240 10 11 12 20 30 1 80 999999 0 0");
+        Capture(panel, Path.Combine(outDir, "4e-damage.png"), () => panel.ShowPage("damage", false));
+        Capture(panel, Path.Combine(outDir, "4f-packets.png"), () => panel.ShowPage("packets", false));
+        RenderCounter(Path.Combine(outDir, "counter.png"), capture);
         Capture(panel, Path.Combine(outDir, "5-layout.png"), () => panel.ShowPage("layout", false));
         Capture(panel, Path.Combine(outDir, "6-settings.png"), () => panel.ShowPage("settings", false));
         Capture(panel, Path.Combine(outDir, "7-light.png"), () =>
@@ -79,6 +91,21 @@ internal static class Shots
         button.UpdateLayout();
         var bmp = new RenderTargetBitmap((int)button.ActualWidth, (int)button.ActualHeight, 96, 96, PixelFormats.Pbgra32);
         bmp.Render(button);
+        var png = new PngBitmapEncoder();
+        png.Frames.Add(BitmapFrame.Create(bmp));
+        using var fs = File.Create(file);
+        png.Save(fs);
+    }
+
+    private static void RenderCounter(string file, PacketCapture capture)
+    {
+        var card = new DamageCard(() => { });
+        card.Show(capture.Stats(1));
+        card.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        card.Arrange(new Rect(card.DesiredSize));
+        card.UpdateLayout();
+        var bmp = new RenderTargetBitmap((int)Math.Ceiling(card.ActualWidth), (int)Math.Ceiling(card.ActualHeight), 96, 96, PixelFormats.Pbgra32);
+        bmp.Render(card);
         var png = new PngBitmapEncoder();
         png.Frames.Add(BitmapFrame.Create(bmp));
         using var fs = File.Create(file);

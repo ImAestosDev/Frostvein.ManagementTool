@@ -1,0 +1,218 @@
+using System.Net;
+using System.Net.NetworkInformation;
+using System.Net.Sockets;
+using System.Runtime.InteropServices;
+using System.Security.Principal;
+using System.Threading;
+
+namespace Fmt.App;
+
+public sealed record LoggedPacket(DateTime Time, string Text);
+
+// Reads incoming game traffic from the network card; the client itself stays untouched.
+public sealed class PacketCapture : IDisposable
+{
+    private const string GameClass = "TNosTaleMainF";
+    private const int MaxLog = 2000;
+    private const int TableRefreshMs = 500;
+    private const int AddressFamilyV4 = 2;
+    private const int TcpTableOwnerPidAll = 5;
+    private const uint StateEstablished = 5;
+
+    private readonly record struct Flow(uint RemoteAddress, ushort RemotePort, ushort LocalPort);
+
+    private readonly object _lock = new();
+    private readonly List<Socket> _sockets = [];
+    private readonly Dictionary<Flow, TcpStream> _streams = [];
+    private readonly Dictionary<uint, DamageMeter> _meters = [];
+    private readonly Queue<LoggedPacket> _log = new();
+    private Dictionary<Flow, uint> _flows = [];
+    private Timer? _tableTimer;
+    private uint _lastPid;
+    private long _logVersion;
+
+    public bool IsRunning { get; private set; }
+    public string? Error { get; private set; }
+    public long LogVersion => Interlocked.Read(ref _logVersion);
+
+    public static bool IsAdmin
+    {
+        get
+        {
+            using var identity = WindowsIdentity.GetCurrent();
+            return new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator);
+        }
+    }
+
+    public void Start()
+    {
+        if (IsRunning) return;
+        Error = null;
+        var addresses = NetworkInterface.GetAllNetworkInterfaces()
+            .Where(n => n.OperationalStatus == OperationalStatus.Up && n.NetworkInterfaceType != NetworkInterfaceType.Loopback)
+            .SelectMany(n => n.GetIPProperties().UnicastAddresses)
+            .Select(a => a.Address)
+            .Where(a => a.AddressFamily == AddressFamily.InterNetwork)
+            .Distinct().ToList();
+
+        foreach (var address in addresses)
+        {
+            try
+            {
+                var socket = new Socket(AddressFamily.InterNetwork, SocketType.Raw, ProtocolType.IP) { ReceiveBufferSize = 1 << 21 };
+                socket.Bind(new IPEndPoint(address, 0));
+                socket.IOControl(IOControlCode.ReceiveAll, BitConverter.GetBytes(1), new byte[4]);
+                _sockets.Add(socket);
+                new Thread(() => ReadLoop(socket)) { IsBackground = true, Name = "FMT capture " + address }.Start();
+            }
+            catch (SocketException e)
+            {
+                Error = e.Message;
+            }
+        }
+        if (_sockets.Count == 0)
+        {
+            Error ??= "Keine aktive Netzwerkverbindung gefunden.";
+            return;
+        }
+        Error = null;
+        IsRunning = true;
+        _tableTimer = new Timer(_ => RefreshFlows(), null, 0, TableRefreshMs);
+    }
+
+    public void Stop()
+    {
+        IsRunning = false;
+        _tableTimer?.Dispose();
+        _tableTimer = null;
+        foreach (var socket in _sockets) socket.Dispose();
+        _sockets.Clear();
+        lock (_lock) _streams.Clear();
+    }
+
+    private void ReadLoop(Socket socket)
+    {
+        var buffer = new byte[65536];
+        var output = new List<string>();
+        try
+        {
+            while (true)
+            {
+                var length = socket.Receive(buffer);
+                if (!IpPacket.TryParseTcp(buffer.AsSpan(0, length), out var s) || s.PayloadLength == 0) continue;
+                var flow = new Flow(s.SourceAddress, s.SourcePort, s.DestinationPort);
+                if (!_flows.TryGetValue(flow, out var pid)) continue;
+
+                lock (_lock)
+                {
+                    if (!_streams.TryGetValue(flow, out var stream)) _streams[flow] = stream = new TcpStream();
+                    output.Clear();
+                    stream.Push(s.Sequence, buffer.AsSpan(s.PayloadOffset, s.PayloadLength), output);
+                    foreach (var packet in output) Record(pid, packet);
+                }
+            }
+        }
+        catch (Exception e) when (e is SocketException or ObjectDisposedException)
+        {
+            // Closed by Stop.
+        }
+    }
+
+    // Also the entry point for dev renders.
+    public void Feed(uint pid, string packet)
+    {
+        lock (_lock) Record(pid, packet);
+    }
+
+    private void Record(uint pid, string packet)
+    {
+        var now = DateTime.Now;
+        if (!_meters.TryGetValue(pid, out var meter)) _meters[pid] = meter = new DamageMeter();
+        meter.Handle(packet, now);
+        _lastPid = pid;
+        _log.Enqueue(new LoggedPacket(now, packet));
+        if (_log.Count > MaxLog) _log.Dequeue();
+        Interlocked.Increment(ref _logVersion);
+    }
+
+    public DamageStats Stats(uint pid)
+    {
+        lock (_lock) return Meter(pid)?.Stats() ?? DamageStats.Empty;
+    }
+
+    public void ResetDamage(uint pid)
+    {
+        lock (_lock) Meter(pid)?.Reset();
+    }
+
+    private DamageMeter? Meter(uint pid) =>
+        _meters.TryGetValue(pid, out var meter) || _meters.TryGetValue(_lastPid, out meter) ? meter : null;
+
+    public List<LoggedPacket> Log()
+    {
+        lock (_lock) return [.. _log];
+    }
+
+    public void ClearLog()
+    {
+        lock (_lock) _log.Clear();
+        Interlocked.Increment(ref _logVersion);
+    }
+
+    private void RefreshFlows()
+    {
+        var games = new HashSet<uint>();
+        foreach (var hwnd in Native.TopLevelWindows())
+        {
+            if (Native.ClassName(hwnd) != GameClass) continue;
+            Native.GetWindowThreadProcessId(hwnd, out var pid);
+            games.Add(pid);
+        }
+        var flows = ReadTcpTable(games);
+        _flows = flows;
+        lock (_lock)
+        {
+            foreach (var closed in _streams.Keys.Where(f => !flows.ContainsKey(f)).ToList()) _streams.Remove(closed);
+        }
+    }
+
+    private static Dictionary<Flow, uint> ReadTcpTable(HashSet<uint> pids)
+    {
+        var result = new Dictionary<Flow, uint>();
+        if (pids.Count == 0) return result;
+        var size = 0;
+        GetExtendedTcpTable(0, ref size, false, AddressFamilyV4, TcpTableOwnerPidAll, 0);
+        var table = Marshal.AllocHGlobal(size);
+        try
+        {
+            if (GetExtendedTcpTable(table, ref size, false, AddressFamilyV4, TcpTableOwnerPidAll, 0) != 0) return result;
+            var count = Marshal.ReadInt32(table);
+            var row = table + 4;
+            for (var i = 0; i < count; i++, row += Marshal.SizeOf<TcpRow>())
+            {
+                var r = Marshal.PtrToStructure<TcpRow>(row);
+                if (r.State == StateEstablished && pids.Contains(r.Pid))
+                    result[new Flow(r.RemoteAddress, Port(r.RemotePort), Port(r.LocalPort))] = r.Pid;
+            }
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(table);
+        }
+        return result;
+    }
+
+    // Ports sit in network byte order in the low word.
+    private static ushort Port(uint raw) => (ushort)(((raw & 0xFF) << 8) | ((raw >> 8) & 0xFF));
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct TcpRow
+    {
+        public uint State, LocalAddress, LocalPort, RemoteAddress, RemotePort, Pid;
+    }
+
+    [DllImport("iphlpapi.dll")]
+    private static extern uint GetExtendedTcpTable(nint table, ref int size, bool order, int family, int tableClass, uint reserved);
+
+    public void Dispose() => Stop();
+}

@@ -107,6 +107,10 @@ public sealed class Settings
     public double FreeHeight { get; set; } = 760;
     public bool ShowPill { get; set; } = true;
     public bool AutoUpdate { get; set; } = true;
+    public bool CaptureEnabled { get; set; }
+    public bool ShowDamageOverlay { get; set; } = true;
+    public double DamageOverlayX { get; set; } = 0.02;
+    public double DamageOverlayY { get; set; } = 0.12;
     public LandOfLifeSettings LandOfLife { get; set; } = new();
     public double PillX { get; set; } = DefaultPillX;
     public double PillY { get; set; } = DefaultPillY;

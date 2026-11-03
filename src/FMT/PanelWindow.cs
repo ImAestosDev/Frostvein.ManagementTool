@@ -32,6 +32,19 @@ public sealed class PanelWindow : Window
     public bool IsOpen => _wantOpen;
     public Updater? Updater { get; set; }
     public Action? Quit { get; set; }
+    public PacketCapture? Capture { get; set; }
+    public Action? StartCapture { get; set; }
+    public Action? StopCapture { get; set; }
+
+    public uint GamePid
+    {
+        get
+        {
+            if (_tracker == null) return 0;
+            Native.GetWindowThreadProcessId(_tracker.Target, out var pid);
+            return pid;
+        }
+    }
 
     public PanelWindow(AppState state, GameWindowTracker? tracker)
     {
@@ -185,6 +198,8 @@ public sealed class PanelWindow : Window
         Add("dashboard", Ui.G.Home, "Übersicht");
         Add("dailies", Ui.G.Check, "Dailies");
         if (_state.S.LandOfLife.Visible) Add("landoflife", Ui.G.Clock, _state.S.LandOfLife.Name);
+        Add("damage", Ui.G.Damage, "Damage");
+        Add("packets", Ui.G.Packets, "Packetlogger");
         var sep = new Border { Height = 1, Margin = new Thickness(4, 6, 4, 6) };
         sep.SetResourceReference(Border.BackgroundProperty, "Line");
         _nav.Children.Add(sep);
@@ -221,6 +236,8 @@ public sealed class PanelWindow : Window
         if (key == "dashboard") return new DashboardView(_state, this);
         if (key == "dailies") return new DailiesView(_state);
         if (key == "landoflife" && _state.S.LandOfLife.Visible) return new LandOfLifeView(_state);
+        if (key == "damage") return new DamageView(_state, this);
+        if (key == "packets") return new PacketLogView(this);
         if (key == "settings") return new SettingsView(_state, () => HotkeysChanged?.Invoke(), Updater);
         if (key == "layout") return new LayoutView(_state, this);
         if (key.StartsWith("cat:", StringComparison.Ordinal) && _state.Data.FindCategory(key[4..]) != null)
