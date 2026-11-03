@@ -27,6 +27,7 @@ public sealed class PacketCapture : IDisposable
     private readonly Dictionary<Flow, TcpStream> _streams = [];
     private readonly Dictionary<uint, DamageMeter> _meters = [];
     private readonly Dictionary<uint, ExpTracker> _exp = [];
+    private readonly Dictionary<uint, DropTracker> _drops = [];
     private readonly Queue<LoggedPacket> _log = new();
     private readonly Dictionary<long, string> _known;
     private readonly NameBook _names;
@@ -186,6 +187,8 @@ public sealed class PacketCapture : IDisposable
         meter.Handle(packet, now);
         if (!_exp.TryGetValue(pid, out var exp)) _exp[pid] = exp = new ExpTracker();
         exp.Handle(packet, now);
+        if (!_drops.TryGetValue(pid, out var drops)) _drops[pid] = drops = new DropTracker();
+        drops.Handle(packet, meter.OwnId);
         RememberOwn(meter);
         _lastPid = pid;
 
@@ -266,6 +269,19 @@ public sealed class PacketCapture : IDisposable
     {
         lock (_lock) ExpOf(pid)?.StopRecording(DateTime.Now);
     }
+
+    public DropStats Drops(uint pid)
+    {
+        lock (_lock) return DropsOf(pid)?.Stats() ?? DropStats.Empty;
+    }
+
+    public void ResetDrops(uint pid)
+    {
+        lock (_lock) DropsOf(pid)?.Reset();
+    }
+
+    private DropTracker? DropsOf(uint pid) =>
+        _drops.TryGetValue(pid, out var drops) || _drops.TryGetValue(_lastPid, out drops) ? drops : null;
 
     private ExpTracker? ExpOf(uint pid) =>
         _exp.TryGetValue(pid, out var exp) || _exp.TryGetValue(_lastPid, out exp) ? exp : null;

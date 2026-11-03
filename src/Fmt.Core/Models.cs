@@ -119,6 +119,9 @@ public sealed class Settings
     public bool ShowExpOverlay { get; set; } = true;
     public double ExpOverlayX { get; set; } = 0.35;
     public double ExpOverlayY { get; set; } = 0.02;
+    public bool ShowDropOverlay { get; set; } = true;
+    public double DropOverlayX { get; set; } = 0.7;
+    public double DropOverlayY { get; set; } = 0.12;
     public LandOfLifeSettings LandOfLife { get; set; } = new();
     public double PillX { get; set; } = DefaultPillX;
     public double PillY { get; set; } = DefaultPillY;

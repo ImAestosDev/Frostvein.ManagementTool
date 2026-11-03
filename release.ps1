@@ -18,6 +18,7 @@ function Run($exe) {
 }
 
 if (git -C $root status --porcelain) { throw "Uncommitted changes: commit them first." }
+if (-not (Test-Path (Join-Path $root "src\FMT\Assets\icons.zip"))) { Run powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $root "tools\build-item-data.ps1") }
 
 Run dotnet test (Join-Path $root "tests\Fmt.Tests\Fmt.Tests.csproj") --nologo -v q
 

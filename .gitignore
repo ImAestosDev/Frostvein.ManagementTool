@@ -4,3 +4,5 @@ obj/
 *.user
 publish/
 release/
+src/FMT/Assets/items.tsv
+src/FMT/Assets/icons.zip

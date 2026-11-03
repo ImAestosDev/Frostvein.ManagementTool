@@ -24,6 +24,7 @@ public partial class App : Application
     private PacketCapture? _capture;
     private DamageOverlay? _damageOverlay;
     private ExpOverlay? _expOverlay;
+    private DropOverlay? _dropOverlay;
     private string _namesPath = "";
     private readonly System.Windows.Threading.DispatcherTimer _namesTimer = new() { Interval = TimeSpan.FromSeconds(5) };
 
@@ -91,6 +92,7 @@ public partial class App : Application
         _panel.StopCapture = DisableCapture;
         _damageOverlay = new DamageOverlay(_state, _tracker, _capture);
         _expOverlay = new ExpOverlay(_state, _tracker, _capture);
+        _dropOverlay = new DropOverlay(_state, _tracker, _capture);
         _pill = new PillWindow(_state, _tracker, () => _panel.Toggle());
         _tray = new Tray(() => _panel.Toggle(), () => _panel.ShowPage("settings"), Quit);
         _hotkeys = new HotkeyManager();
@@ -102,6 +104,7 @@ public partial class App : Application
             _pill.Refresh();
             _damageOverlay.Refresh();
             _expOverlay.Refresh();
+            _dropOverlay.Refresh();
         };
         _state.DataChanged += () => _pill.Refresh();
         _panel.HotkeysChanged += RegisterHotkeys;
@@ -144,6 +147,7 @@ public partial class App : Application
         _pill!.Refresh();
         _damageOverlay?.Refresh();
         _expOverlay?.Refresh();
+        _dropOverlay?.Refresh();
     }
 
     private void EnableCapture()
@@ -155,6 +159,7 @@ public partial class App : Application
             _capture!.Start();
             _damageOverlay!.Refresh();
             _expOverlay!.Refresh();
+            _dropOverlay!.Refresh();
             return;
         }
         if (RestartElevated()) return;
@@ -170,6 +175,7 @@ public partial class App : Application
         _capture!.Stop();
         _damageOverlay!.Refresh();
         _expOverlay!.Refresh();
+        _dropOverlay!.Refresh();
     }
 
     // Reading the network card needs admin rights; false when the user declines.

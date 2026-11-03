@@ -66,6 +66,13 @@ internal static class Shots
         capture.Feed(1, "lev 85 3742000 40 512000 10000000 1000000 100000 50 700000 12 2800000 0");
         Capture(panel, Path.Combine(outDir, "4g-exp.png"), () => panel.ShowPage("exp", false));
         RenderExp(Path.Combine(outDir, "counter-exp.png"), capture);
+        foreach (var (vnum, amount, id) in new[] { (1012, 42, 901), (2282, 7, 902), (1, 1, 903), (5060, 1, 904), (1012, 8, 905), (500, 2, 906), (2, 3, 907) })
+        {
+            capture.Feed(1, $"drop {vnum} {id} 20 30 {amount} 0 77");
+            capture.Feed(1, $"get 1 77 {id} 0");
+        }
+        Capture(panel, Path.Combine(outDir, "4h-drops.png"), () => panel.ShowPage("drops", false));
+        RenderDrops(Path.Combine(outDir, "counter-drops.png"), capture);
         Capture(panel, Path.Combine(outDir, "4f-packets.png"), () => panel.ShowPage("packets", false));
         Capture(panel, Path.Combine(outDir, "5-layout.png"), () => panel.ShowPage("layout", false));
         Capture(panel, Path.Combine(outDir, "6-settings.png"), () => panel.ShowPage("settings", false));
@@ -133,6 +140,21 @@ internal static class Shots
     {
         var card = new ExpCard(() => { });
         card.Show(capture.Exp(1));
+        card.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        card.Arrange(new Rect(card.DesiredSize));
+        card.UpdateLayout();
+        var bmp = new RenderTargetBitmap((int)Math.Ceiling(card.ActualWidth), (int)Math.Ceiling(card.ActualHeight), 96, 96, PixelFormats.Pbgra32);
+        bmp.Render(card);
+        var png = new PngBitmapEncoder();
+        png.Frames.Add(BitmapFrame.Create(bmp));
+        using var fs = File.Create(file);
+        png.Save(fs);
+    }
+
+    private static void RenderDrops(string file, PacketCapture capture)
+    {
+        var card = new DropCard(() => { });
+        card.Show(capture.Drops(1));
         card.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
         card.Arrange(new Rect(card.DesiredSize));
         card.UpdateLayout();

@@ -17,6 +17,8 @@
     <Using Remove="System.Drawing" />
     <Resource Include="Assets\fmt.ico" />
     <Resource Include="Assets\logo.png" />
+    <Resource Include="Assets\items.tsv" Condition="Exists('Assets\items.tsv')" />
+    <Resource Include="Assets\icons.zip" Condition="Exists('Assets\icons.zip')" />
     <ProjectReference Include="..\Fmt.Core\Fmt.Core.csproj" />
   </ItemGroup>
 </Project>
