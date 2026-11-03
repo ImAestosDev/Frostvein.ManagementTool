@@ -27,6 +27,7 @@ public partial class App : Application
     private DropOverlay? _dropOverlay;
     private SessionOverlay? _sessionOverlay;
     private string _namesPath = "";
+    private string _sessionsPath = "";
     private readonly System.Windows.Threading.DispatcherTimer _namesTimer = new() { Interval = TimeSpan.FromSeconds(5) };
 
     protected override void OnStartup(StartupEventArgs e)
@@ -80,8 +81,13 @@ public partial class App : Application
         _panel.Updater = _updater;
         _panel.Quit = Quit;
         _namesPath = Path.Combine(Path.GetDirectoryName(store.FilePath)!, "players.json");
-        _capture = new PacketCapture(_state.S.MyCharacters, _state.S.PacketLogHidden, NameBook.Load(_namesPath));
-        _namesTimer.Tick += (_, _) => _capture.SaveNames(_namesPath);
+        _sessionsPath = Path.Combine(Path.GetDirectoryName(store.FilePath)!, "sessions.json");
+        _capture = new PacketCapture(_state.S.MyCharacters, _state.S.PacketLogHidden, NameBook.Load(_namesPath), SessionArchive.Load(_sessionsPath));
+        _namesTimer.Tick += (_, _) =>
+        {
+            _capture.SaveNames(_namesPath);
+            _capture.SaveSessions(_sessionsPath);
+        };
         _namesTimer.Start();
         _capture.OwnCharacterFound += (id, name) => Dispatcher.BeginInvoke(() =>
         {
@@ -234,6 +240,7 @@ public partial class App : Application
         _updater?.Dispose();
         _namesTimer.Stop();
         _capture?.SaveNames(_namesPath);
+        _capture?.SaveSessions(_sessionsPath, endRunning: true);
         _capture?.Dispose();
         _hotkeys?.Dispose();
         _tracker?.Dispose();

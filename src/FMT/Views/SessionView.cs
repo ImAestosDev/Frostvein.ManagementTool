@@ -17,7 +17,7 @@ public sealed class SessionView : PageView
     private readonly TextBlock _usedHint = Ui.T("", 12, "Muted", wrap: true);
     private FrameworkElement? _buffsCard;
     private FrameworkElement? _results;
-    private Button? _start, _end;
+    private Button? _start, _end, _reset;
     private DropCard? _drops;
     private List<PlayerDamage>? _shownPlayers;
     private DamageMode _builtMode;
@@ -52,7 +52,9 @@ public sealed class SessionView : PageView
         {
             _start = Ui.Btn("Start", () => { capture.StartSession(_shell.GamePid); Update(); }, "Primary");
             _end = Ui.Btn("Beenden", () => { capture.EndSession(_shell.GamePid); Update(); }, "Primary");
-            Ui.AddTo(col, Ui.Card(Ui.Cols("*,Auto,Auto", _time, _start, _end)), 10);
+            _reset = Ui.Btn("Zurücksetzen", () => { capture.ResetSession(_shell.GamePid); Update(); }, "Ghost", Ui.G.Undo);
+            _reset.Margin = new Thickness(6, 0, 0, 0);
+            Ui.AddTo(col, Ui.Card(Ui.Cols("*,Auto,Auto,Auto", _time, _start, _end, _reset)), 10);
             Ui.AddTo(col, Ui.Check("Kleines Overlay über dem Spiel", _state.S.ShowSessionOverlay, x => { _state.S.ShowSessionOverlay = x; _state.TouchSettings(); }), 10);
 
             _builtMode = _state.S.DamageMode;
@@ -103,6 +105,7 @@ public sealed class SessionView : PageView
         var running = stats is { Running: true };
         if (_start != null) _start.Visibility = running ? Visibility.Collapsed : Visibility.Visible;
         if (_end != null) _end.Visibility = running ? Visibility.Visible : Visibility.Collapsed;
+        if (_reset != null) _reset.Visibility = stats == null ? Visibility.Collapsed : Visibility.Visible;
         if (_results != null) _results.Visibility = stats == null ? Visibility.Collapsed : Visibility.Visible;
         if (stats == null)
         {
@@ -112,7 +115,7 @@ public sealed class SessionView : PageView
         _time.Text = (running ? "Läuft seit " : "Ergebnis nach ") + ExpView.Clock(stats.Duration);
         if (stats.TimeIsUp) _time.Text = SessionCard.Warning + " · " + _time.Text;
         FillPlayers(stats.Damage);
-        FillExp(stats);
+        FillExpRows(_exp, stats.Exp.Recording?.Rows ?? [], stats.Running);
         _drops?.Show(stats.Drops);
         MonstersView.FillKills(_kills, stats.Kills);
         ItemsView.FillUsed(_used, stats.Used);
@@ -125,34 +128,39 @@ public sealed class SessionView : PageView
         var table = damage.Table(_state.S.DamageMode);
         if (_shownPlayers != null && _shownPlayers.SequenceEqual(table)) return;
         _shownPlayers = table;
-        _players.Children.Clear();
+        FillTable(_players, table);
+    }
+
+    public static void FillTable(StackPanel panel, IReadOnlyList<PlayerDamage> table)
+    {
+        panel.Children.Clear();
         if (table.Count == 0)
         {
             var empty = Ui.T("Noch kein Schaden gezählt.", 13, "Muted");
             empty.Margin = new Thickness(10, 6, 10, 6);
-            _players.Children.Add(empty);
+            panel.Children.Add(empty);
             return;
         }
-        _players.Children.Add(DamageView.PlayerRow("", "Spieler", "Schaden", "Anteil", "Best Hit", "Muted", 12, false, null));
+        panel.Children.Add(DamageView.PlayerRow("", "Spieler", "Schaden", "Anteil", "Best Hit", "Muted", 12, false, null));
         var total = Math.Max(1, table.Sum(p => p.Total));
         var place = 0;
         foreach (var p in table)
         {
             place++;
-            _players.Children.Add(DamageView.PlayerRow($"{place}.", p.Name, DamageCard.Number(p.Total), $"{p.Total * 100.0 / total:0} %", DamageCard.Number(p.Best), p.IsOwn ? "Accent" : "Ink", 13, p.IsOwn, null));
+            panel.Children.Add(DamageView.PlayerRow($"{place}.", p.Name, DamageCard.Number(p.Total), $"{p.Total * 100.0 / total:0} %", DamageCard.Number(p.Best), p.IsOwn ? "Accent" : "Ink", 13, p.IsOwn, null));
         }
     }
 
-    private void FillExp(SessionStats stats)
+    public static void FillExpRows(StackPanel panel, IReadOnlyList<ExpRecordRow> rows, bool running)
     {
-        _exp.Children.Clear();
-        if (stats.Exp.Recording is not { Rows.Count: > 0 } recording)
+        panel.Children.Clear();
+        if (rows.Count == 0)
         {
-            _exp.Children.Add(Ui.T("Warte auf EXP.", 13, "Muted"));
+            panel.Children.Add(Ui.T("Keine EXP-Daten.", 13, "Muted"));
             return;
         }
-        Ui.AddTo(_exp, ExpView.RecordRow("", "Erhalten", stats.Running ? "" : "Pro Stunde", "Muted", 12, false), 0);
-        foreach (var row in recording.Rows)
-            Ui.AddTo(_exp, ExpView.RecordRow(row.Label, "+" + ExpCard.Percent(row.GainedPercent), stats.Running ? "" : ExpCard.Percent(row.PercentPerHour), "Ink", 14, !stats.Running), 4);
+        Ui.AddTo(panel, ExpView.RecordRow("", "Erhalten", running ? "" : "Pro Stunde", "Muted", 12, false), 0);
+        foreach (var row in rows)
+            Ui.AddTo(panel, ExpView.RecordRow(row.Label, "+" + ExpCard.Percent(row.GainedPercent), running ? "" : ExpCard.Percent(row.PercentPerHour), "Ink", 14, !running), 4);
     }
 }

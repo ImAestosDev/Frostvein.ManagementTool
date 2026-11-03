@@ -29,6 +29,9 @@ public sealed class PacketCapture : IDisposable
     private readonly Dictionary<uint, ExpTracker> _exp = [];
     private readonly Dictionary<uint, DropTracker> _drops = [];
     private readonly Dictionary<uint, Session> _sessions = [];
+    private readonly SessionArchive _archive;
+    private static readonly TimeSpan SnapshotEvery = TimeSpan.FromMinutes(1);
+    private DateTime _lastSnapshot;
     private readonly Dictionary<uint, KillTracker> _kills = [];
     private readonly Dictionary<uint, ItemUseTracker> _uses = [];
     private readonly IReadOnlySet<int> _watchedItems = ItemCatalog.WatchedVNums(), _watchedCards = ItemCatalog.WatchedCards();
@@ -46,9 +49,10 @@ public sealed class PacketCapture : IDisposable
     private long _packets;
     private DateTime _startedAt;
 
-    public PacketCapture(IDictionary<long, string> myCharacters, IEnumerable<string> hidden, NameBook names)
+    public PacketCapture(IDictionary<long, string> myCharacters, IEnumerable<string> hidden, NameBook names, SessionArchive? archive = null)
     {
         _names = names;
+        _archive = archive ?? new SessionArchive();
         _known = new Dictionary<long, string>(myCharacters);
         _hidden = new HashSet<string>(hidden, StringComparer.Ordinal);
     }
@@ -199,7 +203,11 @@ public sealed class PacketCapture : IDisposable
         if (!_kills.TryGetValue(pid, out var kills)) _kills[pid] = kills = new KillTracker();
         kills.Handle(packet, meter.OwnId);
         if (packet.StartsWith("lev ", StringComparison.Ordinal)) _lastLev[pid] = packet;
-        if (_sessions.TryGetValue(pid, out var session)) session.Handle(packet, now, meter.OwnId);
+        if (_sessions.TryGetValue(pid, out var session))
+        {
+            session.Handle(packet, now, meter.OwnId);
+            Keep(session, now);
+        }
         RememberOwn(meter);
         _lastPid = pid;
 
@@ -306,18 +314,87 @@ public sealed class PacketCapture : IDisposable
             if (meter?.OwnId is { } own) damage.SetOwn(own);
             if (!_uses.TryGetValue(key, out var uses)) _uses[key] = uses = new ItemUseTracker(_watchedItems, _watchedCards);
             _kills.TryGetValue(key, out var kills);
+            if (_sessions.TryGetValue(key, out var last)) Finish(last, DateTime.Now);
             _sessions[key] = new Session(DateTime.Now, lev, damage, drops, uses, kills);
         }
     }
 
     public void EndSession(uint pid)
     {
-        lock (_lock) SessionOf(pid)?.End(DateTime.Now);
+        lock (_lock)
+        {
+            if (SessionOf(pid) is { } session) Finish(session, DateTime.Now);
+        }
+    }
+
+    // Back to no session; the run stays in the archive.
+    public void ResetSession(uint pid)
+    {
+        lock (_lock)
+        {
+            if (SessionOf(pid) is not { } session) return;
+            Finish(session, DateTime.Now);
+            foreach (var key in _sessions.Where(s => s.Value == session).Select(s => s.Key).ToList()) _sessions.Remove(key);
+        }
     }
 
     public SessionStats? Session(uint pid)
     {
-        lock (_lock) return SessionOf(pid)?.Stats(DateTime.Now);
+        lock (_lock)
+        {
+            if (SessionOf(pid) is not { } session) return null;
+            var stats = session.Stats(DateTime.Now);
+            Keep(session, DateTime.Now);
+            return stats;
+        }
+    }
+
+    private void Finish(Session session, DateTime now)
+    {
+        session.End(now);
+        Keep(session, now);
+    }
+
+    private void Keep(Session session, DateTime now)
+    {
+        if (session.Running || session.Archived) return;
+        _archive.Add(session.Snapshot(now));
+        session.Archived = true;
+    }
+
+    // A running session is saved now and then too, so a crash loses at most a minute.
+    public void SaveSessions(string path, bool endRunning = false)
+    {
+        lock (_lock)
+        {
+            var now = DateTime.Now;
+            var snapshot = now - _lastSnapshot >= SnapshotEvery;
+            foreach (var session in _sessions.Values)
+            {
+                if (endRunning) session.End(now);
+                session.CheckLimit(now);
+                Keep(session, now);
+                if (session.Running && snapshot) _archive.Add(session.Snapshot(now));
+            }
+            if (snapshot) _lastSnapshot = now;
+            try
+            {
+                _archive.Save(path);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                // Stays dirty, the next save tries again.
+            }
+        }
+    }
+
+    public List<SavedSession> SavedSessions()
+    {
+        lock (_lock)
+        {
+            var running = _sessions.Values.Where(s => s.Running).Select(s => s.Id).ToHashSet();
+            return _archive.NewestFirst().Where(s => !running.Contains(s.Id)).ToList();
+        }
     }
 
     private Session? SessionOf(uint pid) =>

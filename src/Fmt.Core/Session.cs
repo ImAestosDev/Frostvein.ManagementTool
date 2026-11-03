@@ -18,6 +18,9 @@ public sealed class Session
     private DateTime? _end;
     private bool _timeIsUp;
 
+    public string Id { get; } = Ids.New();
+    public bool Archived { get; set; }
+
     public Session(DateTime now, string? lastLev, DamageMeter damage, DropTracker? liveDrops, ItemUseTracker? uses = null, KillTracker? liveKills = null)
     {
         _start = now;
@@ -34,7 +37,7 @@ public sealed class Session
     public bool Running => _end == null;
 
     // Ends on the exact second, however late a packet or the display notices it.
-    private void CheckLimit(DateTime now)
+    public void CheckLimit(DateTime now)
     {
         if (!Running || now - _start < Limit) return;
         _timeIsUp = true;
@@ -63,6 +66,13 @@ public sealed class Session
         _end = now;
         _exp.StopRecording(now);
         _usedAtEnd = _uses?.Used(now) ?? [];
+    }
+
+    public SavedSession Snapshot(DateTime now)
+    {
+        var s = Stats(now);
+        return new SavedSession(Id, _damage.OwnId == null ? "" : _damage.OwnName, _start, s.Duration, s.TimeIsUp, !s.Running,
+            [.. s.Damage.Players], [.. s.Exp.Recording?.Rows ?? []], [.. s.Drops.Items], s.Drops.Gold, [.. s.Kills.Monsters], [.. s.Used]);
     }
 
     public SessionStats Stats(DateTime now)

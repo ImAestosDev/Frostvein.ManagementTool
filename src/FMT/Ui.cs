@@ -12,7 +12,7 @@ public static class Ui
     public static class G
     {
         public const string Restart = "", Power = "", Damage = "", Packets = "", Shrink = "", Grow = "";
-        public const string Exp = "", Drops = "", Monsters = "", Items ="", Session ="";
+        public const string Exp = "", Drops = "", History = "", Monsters ="", Items ="", Session ="";
         public const string Home ="", Check = "", Settings = "", Add = "", Edit = "", Delete = "",
             Copy = "", Up = "", Down = "", Close = "", Export = "", Sliders = "", Back = "", Forward = "",
             Clock = "", Flame = "", Folder = "", Undo = "";

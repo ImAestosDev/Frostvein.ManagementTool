@@ -100,6 +100,8 @@ internal static class Shots
         RenderSession(Path.Combine(outDir, "counter-session-warning.png"), capture.Session(1)! with { Running = false, Duration = Session.Limit, TimeIsUp = true });
         capture.EndSession(1);
         Capture(panel, Path.Combine(outDir, "4j-session-ended.png"), () => panel.ShowPage("session", false));
+        Capture(panel, Path.Combine(outDir, "4m-history.png"), () => panel.ShowPage("sessions", false));
+        Capture(panel, Path.Combine(outDir, "4n-history-detail.png"), () => ((SessionHistoryView)panel.CurrentPage!).Open(capture.SavedSessions()[0]));
         panel.Height = 1000;
         Capture(panel, Path.Combine(outDir, "4f-packets.png"), () => panel.ShowPage("packets", false));
         Capture(panel, Path.Combine(outDir, "5-layout.png"), () => panel.ShowPage("layout", false));
@@ -196,7 +198,7 @@ internal static class Shots
 
     private static void RenderSession(string file, SessionStats? stats)
     {
-        var card = new SessionCard(() => { }, () => { });
+        var card = new SessionCard(() => { }, () => { }, () => { });
         card.Show(stats);
         card.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
         card.Arrange(new Rect(card.DesiredSize));
