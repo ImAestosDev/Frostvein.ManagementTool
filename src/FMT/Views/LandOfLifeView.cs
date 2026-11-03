@@ -68,6 +68,7 @@ public sealed class LandOfLifeView : PageView
         UpdateLive();
         Ui.AddTo(col, _live, 8);
         Ui.AddTo(col, Ui.Check("Kleine Anzeige über dem Spiel", s.ShowLandOverlay, v => { s.ShowLandOverlay = v; _state.TouchSettings(); }), 8);
+        Ui.AddTo(col, Ui.Check("Nur im Land der Lebenden anzeigen", s.LandOverlayOnlyInLand, v => { s.LandOverlayOnlyInLand = v; _state.TouchSettings(); }), 6);
         return col;
     }
 

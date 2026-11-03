@@ -126,6 +126,7 @@ public sealed class Settings
     public double SessionOverlayX { get; set; } = 0.35;
     public double SessionOverlayY { get; set; } = 0.12;
     public bool ShowLandOverlay { get; set; } = true;
+    public bool LandOverlayOnlyInLand { get; set; }
     public double LandOverlayX { get; set; } = 0.7;
     public double LandOverlayY { get; set; } = 0.5;
     public LandOfLifeSettings LandOfLife { get; set; } = new();

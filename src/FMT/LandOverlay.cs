@@ -71,8 +71,9 @@ public sealed class LandOverlay : GameOverlay
         Host(_card);
     }
 
-    // Only inside the area, the timers keep running in the background.
-    protected override bool Enabled => State.S.ShowLandOverlay && Capture.Land(GamePid(), State.S.LandOfLife).InLand;
+    // The timers keep running in the background even while the card is hidden.
+    protected override bool Enabled =>
+        State.S.ShowLandOverlay && (!State.S.LandOverlayOnlyInLand || Capture.Land(GamePid(), State.S.LandOfLife).InLand);
 
     protected override (double X, double Y) Position
     {
