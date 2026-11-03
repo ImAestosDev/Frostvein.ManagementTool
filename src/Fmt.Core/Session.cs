@@ -47,11 +47,7 @@ public sealed class Session
 
     public SessionStats Stats(DateTime now)
     {
-        var used = (_usedAtEnd ?? _uses?.Used(now) ?? [])
-            .Select(pair => new UsedItem(pair.Key, pair.Value - _usedAtStart.GetValueOrDefault(pair.Key)))
-            .Where(u => u.Count > 0)
-            .OrderByDescending(u => u.Count).ThenBy(u => u.VNum)
-            .ToList();
+        var used = ItemUseTracker.Since(_usedAtEnd ?? _uses?.Used(now) ?? [], _usedAtStart);
         IReadOnlyList<ActiveBuff> buffs = Running && _uses != null ? _uses.Buffs(now) : [];
         return new SessionStats(Running, (_end ?? now) - _start, _damage.Stats(), _exp.Stats(now), _drops.Stats(), used, buffs, _uses?.InventoryKnown ?? false);
     }

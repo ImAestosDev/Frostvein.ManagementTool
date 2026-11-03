@@ -123,6 +123,24 @@ public class ItemUseTests
         Assert.Empty(stats.Buffs);
     }
 
+    [Fact]
+    public void CounterResetLeavesSessionsAlone()
+    {
+        var t = New();
+        t.Handle($"inv 1 3.{Potion}.50.0", Me, T0);
+        var s = new Session(T0, null, new DamageMeter(), null, t);
+        t.Handle($"ivn 1 3.{Potion}.48.0", Me, T0);
+        var later = T0.AddSeconds(5);
+        Assert.Equal(2, Assert.Single(t.Counter(later).Used).Count);
+
+        t.ResetCounter(later);
+        Assert.Empty(t.Counter(later).Used);
+        Assert.Equal(2, Assert.Single(s.Stats(later).Used).Count);
+
+        t.Handle($"ivn 1 3.{Potion}.47.0", Me, later);
+        Assert.Equal(1, Assert.Single(t.Counter(later.AddSeconds(5)).Used).Count);
+    }
+
     [Theory]
     [InlineData("Ancelloan Segen (Event)", true)]
     [InlineData("Angriffstrank (TA)", true)]

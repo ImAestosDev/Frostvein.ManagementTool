@@ -76,7 +76,7 @@ public sealed class SessionView : PageView
             Ui.AddTo(results, Ui.T("Benutzte Items", 14, bold: true), 16);
             Ui.AddTo(results, Ui.Card(_used), 8);
             Ui.AddTo(results, _usedHint, 6);
-            _buffsCard = Ui.Col(8, Ui.T("Aktive Segen und Tränke", 14, bold: true), Ui.Card(_buffs));
+            _buffsCard = ItemsView.BuffsSection(_buffs);
             Ui.AddTo(results, _buffsCard, 16);
             _results = results;
             Ui.AddTo(col, results, 14);
@@ -108,7 +108,9 @@ public sealed class SessionView : PageView
         FillPlayers(stats.Damage);
         FillExp(stats);
         _drops?.Show(stats.Drops);
-        FillUsed(stats);
+        ItemsView.FillUsed(_used, stats.Used);
+        ItemsView.FillHint(_usedHint, stats.InventoryKnown);
+        ItemsView.FillBuffs(_buffs, _buffsCard, stats.Buffs);
     }
 
     private void FillPlayers(DamageStats damage)
@@ -132,33 +134,6 @@ public sealed class SessionView : PageView
             place++;
             _players.Children.Add(DamageView.PlayerRow($"{place}.", p.Name, DamageCard.Number(p.Total), $"{p.Total * 100.0 / total:0} %", DamageCard.Number(p.Best), p.IsOwn ? "Accent" : "Ink", 13, p.IsOwn, null));
         }
-    }
-
-    private void FillUsed(SessionStats stats)
-    {
-        _used.Children.Clear();
-        var rows = stats.Used
-            .GroupBy(u => WatchedItems.BaseName(ItemCatalog.Name(u.VNum)))
-            .Select(g => (Name: g.Key, g.First().VNum, Count: g.Sum(u => u.Count)))
-            .OrderByDescending(r => r.Count);
-        foreach (var row in rows)
-        {
-            var count = Ui.T(DamageCard.Number(row.Count) + "×", 14, bold: true);
-            Ui.AddTo(_used, Ui.Cols("30,*,Auto", new Image { Source = ItemCatalog.Icon(row.VNum), Width = 24, Height = 24, HorizontalAlignment = HorizontalAlignment.Left }, Ui.T(row.Name, 14), count), 4);
-        }
-        if (_used.Children.Count == 0) _used.Children.Add(Ui.T("Noch nichts benutzt.", 13, "Muted"));
-        _usedHint.Text = stats.InventoryKnown
-            ? ""
-            : "FMT kennt dein Inventar noch nicht. Der erste Trank pro Stapel fehlt, bis du einmal neu in deinen Charakter gehst, während FMT mitliest.";
-        _usedHint.Visibility = stats.InventoryKnown ? Visibility.Collapsed : Visibility.Visible;
-
-        _buffs.Children.Clear();
-        foreach (var buff in stats.Buffs)
-        {
-            var left = Ui.T(ExpView.Clock(buff.Remaining), 14, bold: true);
-            Ui.AddTo(_buffs, Ui.Cols("*,Auto", Ui.T(ItemCatalog.CardName(buff.CardId), 14), left), 4);
-        }
-        if (_buffsCard != null) _buffsCard.Visibility = stats.Buffs.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void FillExp(SessionStats stats)

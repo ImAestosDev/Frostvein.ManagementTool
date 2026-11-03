@@ -202,6 +202,7 @@ public sealed class PanelWindow : Window
         Add("damage", Ui.G.Damage, "Damage");
         Add("exp", Ui.G.Exp, "EXP");
         Add("drops", Ui.G.Drops, "Drops");
+        Add("items", Ui.G.Items, "Items");
         Add("packets", Ui.G.Packets, "Packetlogger");
         var sep = new Border { Height = 1, Margin = new Thickness(4, 6, 4, 6) };
         sep.SetResourceReference(Border.BackgroundProperty, "Line");
@@ -243,6 +244,7 @@ public sealed class PanelWindow : Window
         if (key == "damage") return new DamageView(_state, this);
         if (key == "exp") return new ExpView(_state, this);
         if (key == "drops") return new DropView(_state, this);
+        if (key == "items") return new ItemsView(this);
         if (key == "packets") return new PacketLogView(_state, this);
         if (key == "settings") return new SettingsView(_state, () => HotkeysChanged?.Invoke(), Updater);
         if (key == "layout") return new LayoutView(_state, this);

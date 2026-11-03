@@ -89,6 +89,7 @@ internal static class Shots
         capture.Feed(1, "mv 3 1 1 1 1");
         panel.Height = 1500;
         Capture(panel, Path.Combine(outDir, "4i-session-running.png"), () => panel.ShowPage("session", false));
+        Capture(panel, Path.Combine(outDir, "4k-items.png"), () => panel.ShowPage("items", false));
         capture.EndSession(1);
         Capture(panel, Path.Combine(outDir, "4j-session-ended.png"), () => panel.ShowPage("session", false));
         panel.Height = 1000;

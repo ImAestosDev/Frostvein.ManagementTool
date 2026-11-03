@@ -319,6 +319,19 @@ public sealed class PacketCapture : IDisposable
     private Session? SessionOf(uint pid) =>
         _sessions.TryGetValue(pid, out var session) || _sessions.TryGetValue(_lastPid, out session) ? session : null;
 
+    public ItemUseStats Items(uint pid)
+    {
+        lock (_lock) return UsesOf(pid)?.Counter(DateTime.Now) ?? ItemUseStats.Empty;
+    }
+
+    public void ResetItems(uint pid)
+    {
+        lock (_lock) UsesOf(pid)?.ResetCounter(DateTime.Now);
+    }
+
+    private ItemUseTracker? UsesOf(uint pid) =>
+        _uses.TryGetValue(pid, out var uses) || _uses.TryGetValue(_lastPid, out uses) ? uses : null;
+
     private ExpTracker? ExpOf(uint pid) =>
         _exp.TryGetValue(pid, out var exp) || _exp.TryGetValue(_lastPid, out exp) ? exp : null;
 

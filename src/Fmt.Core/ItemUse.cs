@@ -6,6 +6,11 @@ public sealed record UsedItem(int VNum, int Count);
 
 public sealed record ActiveBuff(int CardId, TimeSpan Remaining);
 
+public sealed record ItemUseStats(IReadOnlyList<UsedItem> Used, IReadOnlyList<ActiveBuff> Buffs, bool InventoryKnown)
+{
+    public static readonly ItemUseStats Empty = new([], [], false);
+}
+
 // Names of the items and buffs worth following; variants share the base name.
 public static class WatchedItems
 {
@@ -53,6 +58,7 @@ public sealed class ItemUseTracker(IReadOnlySet<int> items, IReadOnlySet<int> ca
     private readonly List<Pending> _pending = [];
     private readonly List<Pending> _gains = [];
     private readonly Dictionary<int, DateTime> _buffs = [];
+    private Dictionary<int, int> _counterStart = [];
 
     public bool InventoryKnown { get; private set; }
 
@@ -165,6 +171,18 @@ public sealed class ItemUseTracker(IReadOnlySet<int> items, IReadOnlySet<int> ca
         Flush(now);
         return new Dictionary<int, int>(_used);
     }
+
+    // The counter of the items tab; its reset leaves running sessions alone.
+    public void ResetCounter(DateTime now) => _counterStart = Used(now);
+
+    public ItemUseStats Counter(DateTime now) => new(Since(Used(now), _counterStart), Buffs(now), InventoryKnown);
+
+    public static List<UsedItem> Since(IReadOnlyDictionary<int, int> current, IReadOnlyDictionary<int, int> start) =>
+        current
+            .Select(pair => new UsedItem(pair.Key, pair.Value - start.GetValueOrDefault(pair.Key)))
+            .Where(u => u.Count > 0)
+            .OrderByDescending(u => u.Count).ThenBy(u => u.VNum)
+            .ToList();
 
     public List<ActiveBuff> Buffs(DateTime now) =>
         _buffs.Where(b => b.Value > now).Select(b => new ActiveBuff(b.Key, b.Value - now)).OrderBy(b => b.Remaining).ToList();
