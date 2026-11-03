@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 
 namespace Fmt.Core;
 
@@ -14,7 +14,7 @@ public sealed class DropTracker
 {
     public const int GoldVNum = 1046;
     private const int DropVNum = 1, DropId = 2, DropAmount = 5, DropOwner = 7;
-    private const int GetType = 1, GetPicker = 2, GetId = 3;
+    private const int GetKind = 1, GetPicker = 2, GetId = 3;
     private const string PlayerPicker = "1", PetPicker = "2";
     private const int MaxOpen = 5000;
 
@@ -49,7 +49,7 @@ public sealed class DropTracker
         var t = packet.Split(' ');
         if (t.Length <= GetId || !long.TryParse(t[GetId], NumberStyles.None, CultureInfo.InvariantCulture, out var id)) return;
         if (!_open.Remove(id, out var drop) || ownId is not { } own) return;
-        var mine = t[GetType] switch
+        var mine = t[GetKind] switch
         {
             PlayerPicker => t[GetPicker] == own.ToString(CultureInfo.InvariantCulture),
             // A pet carries no owner of its own, only the drop does.
