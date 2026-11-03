@@ -26,6 +26,7 @@ public sealed class PacketCapture : IDisposable
     private readonly List<Socket> _sockets = [];
     private readonly Dictionary<Flow, TcpStream> _streams = [];
     private readonly Dictionary<uint, DamageMeter> _meters = [];
+    private readonly Dictionary<uint, ExpTracker> _exp = [];
     private readonly Queue<LoggedPacket> _log = new();
     private readonly Dictionary<long, string> _known;
     private readonly NameBook _names;
@@ -183,6 +184,8 @@ public sealed class PacketCapture : IDisposable
         Interlocked.Increment(ref _packets);
         if (!_meters.TryGetValue(pid, out var meter)) _meters[pid] = meter = new DamageMeter(_known, _names);
         meter.Handle(packet, now);
+        if (!_exp.TryGetValue(pid, out var exp)) _exp[pid] = exp = new ExpTracker();
+        exp.Handle(packet, now);
         RememberOwn(meter);
         _lastPid = pid;
 
@@ -243,6 +246,19 @@ public sealed class PacketCapture : IDisposable
     {
         lock (_lock) Meter(pid)?.Reset();
     }
+
+    public ExpStats Exp(uint pid)
+    {
+        lock (_lock) return ExpOf(pid)?.Stats(DateTime.Now) ?? ExpStats.Empty;
+    }
+
+    public void ResetExp(uint pid)
+    {
+        lock (_lock) ExpOf(pid)?.Reset(DateTime.Now);
+    }
+
+    private ExpTracker? ExpOf(uint pid) =>
+        _exp.TryGetValue(pid, out var exp) || _exp.TryGetValue(_lastPid, out exp) ? exp : null;
 
     private DamageMeter? Meter(uint pid) =>
         _meters.TryGetValue(pid, out var meter) || _meters.TryGetValue(_lastPid, out meter) ? meter : null;

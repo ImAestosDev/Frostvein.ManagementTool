@@ -199,6 +199,7 @@ public sealed class PanelWindow : Window
         Add("dailies", Ui.G.Check, "Dailies");
         if (_state.S.LandOfLife.Visible) Add("landoflife", Ui.G.Clock, _state.S.LandOfLife.Name);
         Add("damage", Ui.G.Damage, "Damage");
+        Add("exp", Ui.G.Exp, "EXP");
         Add("packets", Ui.G.Packets, "Packetlogger");
         var sep = new Border { Height = 1, Margin = new Thickness(4, 6, 4, 6) };
         sep.SetResourceReference(Border.BackgroundProperty, "Line");
@@ -237,6 +238,7 @@ public sealed class PanelWindow : Window
         if (key == "dailies") return new DailiesView(_state);
         if (key == "landoflife" && _state.S.LandOfLife.Visible) return new LandOfLifeView(_state);
         if (key == "damage") return new DamageView(_state, this);
+        if (key == "exp") return new ExpView(this);
         if (key == "packets") return new PacketLogView(_state, this);
         if (key == "settings") return new SettingsView(_state, () => HotkeysChanged?.Invoke(), Updater);
         if (key == "layout") return new LayoutView(_state, this);

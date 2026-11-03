@@ -41,7 +41,7 @@ public sealed class DamageView : PageView
         var capture = _shell.Capture;
         if (capture is not { IsRunning: true })
         {
-            Ui.AddTo(col, StartCard(capture), 10);
+            Ui.AddTo(col, StartCard(_shell, Refresh), 10);
         }
         else
         {
@@ -89,9 +89,10 @@ public sealed class DamageView : PageView
         if (_players.Parent is Border b) b.Child = null;
     }
 
-    private FrameworkElement StartCard(PacketCapture? capture)
+    public static FrameworkElement StartCard(PanelWindow shell, Action refresh)
     {
-        var start = Ui.Btn("Mitlesen starten", () => { _shell.StartCapture?.Invoke(); Refresh(); }, "Primary");
+        var capture = shell.Capture;
+        var start = Ui.Btn("Mitlesen starten", () => { shell.StartCapture?.Invoke(); refresh(); }, "Primary");
         start.HorizontalAlignment = HorizontalAlignment.Left;
         return Ui.Card(Ui.Col(10,
             Ui.T("FMT liest dafür die eingehenden Spielpakete an der Netzwerkkarte mit. Der Client wird nicht verändert.", 13, wrap: true),

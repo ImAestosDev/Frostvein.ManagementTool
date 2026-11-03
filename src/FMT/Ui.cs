@@ -12,7 +12,8 @@ public static class Ui
     public static class G
     {
         public const string Restart = "", Power = "", Damage = "", Packets = "", Shrink = "", Grow = "";
-        public const string Home = "", Check = "", Settings = "", Add = "", Edit = "", Delete = "",
+        public const string Exp = "";
+        public const string Home ="", Check = "", Settings = "", Add = "", Edit = "", Delete = "",
             Copy = "", Up = "", Down = "", Close = "", Export = "", Sliders = "", Back = "", Forward = "",
             Clock = "", Flame = "", Folder = "", Undo = "";
     }

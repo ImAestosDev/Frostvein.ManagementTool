@@ -61,6 +61,9 @@ internal static class Shots
             RenderCounter(Path.Combine(outDir, $"counter-{mode}.png"), capture, mode, false);
             RenderCounter(Path.Combine(outDir, $"counter-{mode}-small.png"), capture, mode, true);
         }
+        capture.Feed(1, "lev 85 2500000 40 500000 10000000 1000000 100000 50 700000 12 2800000 0");
+        capture.Feed(1, "lev 85 3742000 40 512000 10000000 1000000 100000 50 700000 12 2800000 0");
+        Capture(panel, Path.Combine(outDir, "4g-exp.png"), () => panel.ShowPage("exp", false));
         Capture(panel, Path.Combine(outDir, "4f-packets.png"), () => panel.ShowPage("packets", false));
         Capture(panel, Path.Combine(outDir, "5-layout.png"), () => panel.ShowPage("layout", false));
         Capture(panel, Path.Combine(outDir, "6-settings.png"), () => panel.ShowPage("settings", false));
