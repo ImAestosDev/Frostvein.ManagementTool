@@ -70,6 +70,23 @@ public class SessionTests
     }
 
     [Fact]
+    public void TimeIsUpAfterOneHourAndFifteenSeconds()
+    {
+        var s = Start();
+        Assert.False(s.Stats(T0.AddSeconds(3614)).TimeIsUp);
+        Assert.True(s.Stats(T0.AddSeconds(3615)).TimeIsUp);
+        Assert.True(s.Running);
+    }
+
+    [Fact]
+    public void EndedSessionShowsNoWarning()
+    {
+        var s = Start();
+        s.End(T0.AddHours(2));
+        Assert.False(s.Stats(T0.AddHours(3)).TimeIsUp);
+    }
+
+    [Fact]
     public void KnowsTheOwnCharacterFromTheLiveMeter()
     {
         var s = Start();

@@ -53,6 +53,7 @@ public sealed class SessionView : PageView
             _start = Ui.Btn("Start", () => { capture.StartSession(_shell.GamePid); Update(); }, "Primary");
             _end = Ui.Btn("Beenden", () => { capture.EndSession(_shell.GamePid); Update(); }, "Primary");
             Ui.AddTo(col, Ui.Card(Ui.Cols("*,Auto,Auto", _time, _start, _end)), 10);
+            Ui.AddTo(col, Ui.Check("Kleines Overlay über dem Spiel", _state.S.ShowSessionOverlay, x => { _state.S.ShowSessionOverlay = x; _state.TouchSettings(); }), 10);
 
             _builtMode = _state.S.DamageMode;
             var mode = Ui.Combo(
@@ -109,6 +110,7 @@ public sealed class SessionView : PageView
             return;
         }
         _time.Text = (running ? "Läuft seit " : "Ergebnis nach ") + ExpView.Clock(stats.Duration);
+        if (stats.TimeIsUp) _time.Text = SessionCard.Warning + " · " + _time.Text;
         FillPlayers(stats.Damage);
         FillExp(stats);
         _drops?.Show(stats.Drops);

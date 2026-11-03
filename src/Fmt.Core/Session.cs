@@ -1,6 +1,11 @@
 namespace Fmt.Core;
 
-public sealed record SessionStats(bool Running, TimeSpan Duration, DamageStats Damage, ExpStats Exp, DropStats Drops, IReadOnlyList<UsedItem> Used, IReadOnlyList<ActiveBuff> Buffs, bool InventoryKnown, KillStats Kills);
+public sealed record SessionStats(bool Running, TimeSpan Duration, DamageStats Damage, ExpStats Exp, DropStats Drops, IReadOnlyList<UsedItem> Used, IReadOnlyList<ActiveBuff> Buffs, bool InventoryKnown, KillStats Kills)
+{
+    public static readonly TimeSpan Limit = new(1, 0, 15);
+
+    public bool TimeIsUp => Running && Duration >= Limit;
+}
 
 // All counters of one run, separate from the counters in their own tabs.
 public sealed class Session

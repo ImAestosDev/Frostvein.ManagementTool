@@ -95,6 +95,9 @@ internal static class Shots
         Capture(panel, Path.Combine(outDir, "4i-session-running.png"), () => panel.ShowPage("session", false));
         Capture(panel, Path.Combine(outDir, "4k-items.png"), () => panel.ShowPage("items", false));
         Capture(panel, Path.Combine(outDir, "4l-monsters.png"), () => panel.ShowPage("monsters", false));
+        RenderSession(Path.Combine(outDir, "counter-session-idle.png"), null);
+        RenderSession(Path.Combine(outDir, "counter-session-running.png"), capture.Session(1));
+        RenderSession(Path.Combine(outDir, "counter-session-warning.png"), capture.Session(1)! with { Duration = SessionStats.Limit });
         capture.EndSession(1);
         Capture(panel, Path.Combine(outDir, "4j-session-ended.png"), () => panel.ShowPage("session", false));
         panel.Height = 1000;
@@ -180,6 +183,21 @@ internal static class Shots
     {
         var card = new DropCard(() => { });
         card.Show(capture.Drops(1));
+        card.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        card.Arrange(new Rect(card.DesiredSize));
+        card.UpdateLayout();
+        var bmp = new RenderTargetBitmap((int)Math.Ceiling(card.ActualWidth), (int)Math.Ceiling(card.ActualHeight), 96, 96, PixelFormats.Pbgra32);
+        bmp.Render(card);
+        var png = new PngBitmapEncoder();
+        png.Frames.Add(BitmapFrame.Create(bmp));
+        using var fs = File.Create(file);
+        png.Save(fs);
+    }
+
+    private static void RenderSession(string file, SessionStats? stats)
+    {
+        var card = new SessionCard(() => { }, () => { });
+        card.Show(stats);
         card.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
         card.Arrange(new Rect(card.DesiredSize));
         card.UpdateLayout();

@@ -25,6 +25,7 @@ public partial class App : Application
     private DamageOverlay? _damageOverlay;
     private ExpOverlay? _expOverlay;
     private DropOverlay? _dropOverlay;
+    private SessionOverlay? _sessionOverlay;
     private string _namesPath = "";
     private readonly System.Windows.Threading.DispatcherTimer _namesTimer = new() { Interval = TimeSpan.FromSeconds(5) };
 
@@ -93,6 +94,7 @@ public partial class App : Application
         _damageOverlay = new DamageOverlay(_state, _tracker, _capture);
         _expOverlay = new ExpOverlay(_state, _tracker, _capture);
         _dropOverlay = new DropOverlay(_state, _tracker, _capture);
+        _sessionOverlay = new SessionOverlay(_state, _tracker, _capture);
         _pill = new PillWindow(_state, _tracker, () => _panel.Toggle());
         _tray = new Tray(() => _panel.Toggle(), () => _panel.ShowPage("settings"), Quit);
         _hotkeys = new HotkeyManager();
@@ -105,6 +107,7 @@ public partial class App : Application
             _damageOverlay.Refresh();
             _expOverlay.Refresh();
             _dropOverlay.Refresh();
+            _sessionOverlay.Refresh();
         };
         _state.DataChanged += () => _pill.Refresh();
         _panel.HotkeysChanged += RegisterHotkeys;
@@ -148,6 +151,7 @@ public partial class App : Application
         _damageOverlay?.Refresh();
         _expOverlay?.Refresh();
         _dropOverlay?.Refresh();
+        _sessionOverlay?.Refresh();
     }
 
     private void EnableCapture()
@@ -160,6 +164,7 @@ public partial class App : Application
             _damageOverlay!.Refresh();
             _expOverlay!.Refresh();
             _dropOverlay!.Refresh();
+            _sessionOverlay!.Refresh();
             return;
         }
         if (RestartElevated()) return;
@@ -176,6 +181,7 @@ public partial class App : Application
         _damageOverlay!.Refresh();
         _expOverlay!.Refresh();
         _dropOverlay!.Refresh();
+        _sessionOverlay!.Refresh();
     }
 
     // Reading the network card needs admin rights; false when the user declines.
