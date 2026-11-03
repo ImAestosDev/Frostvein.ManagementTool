@@ -1,15 +1,12 @@
 namespace Fmt.Core;
 
-public sealed record SessionStats(bool Running, TimeSpan Duration, DamageStats Damage, ExpStats Exp, DropStats Drops, IReadOnlyList<UsedItem> Used, IReadOnlyList<ActiveBuff> Buffs, bool InventoryKnown, KillStats Kills)
-{
-    public static readonly TimeSpan Limit = new(1, 0, 15);
-
-    public bool TimeIsUp => Running && Duration >= Limit;
-}
+public sealed record SessionStats(bool Running, TimeSpan Duration, DamageStats Damage, ExpStats Exp, DropStats Drops, IReadOnlyList<UsedItem> Used, IReadOnlyList<ActiveBuff> Buffs, bool InventoryKnown, KillStats Kills, bool TimeIsUp);
 
 // All counters of one run, separate from the counters in their own tabs.
 public sealed class Session
 {
+    public static readonly TimeSpan Limit = new(1, 0, 15);
+
     private readonly DamageMeter _damage;
     private readonly ExpTracker _exp = new();
     private readonly DropTracker _drops = new();
@@ -19,6 +16,7 @@ public sealed class Session
     private readonly DateTime _start;
     private Dictionary<int, int>? _usedAtEnd;
     private DateTime? _end;
+    private bool _timeIsUp;
 
     public Session(DateTime now, string? lastLev, DamageMeter damage, DropTracker? liveDrops, ItemUseTracker? uses = null, KillTracker? liveKills = null)
     {
@@ -35,8 +33,17 @@ public sealed class Session
 
     public bool Running => _end == null;
 
+    // Ends on the exact second, however late a packet or the display notices it.
+    private void CheckLimit(DateTime now)
+    {
+        if (!Running || now - _start < Limit) return;
+        _timeIsUp = true;
+        Stop(_start + Limit);
+    }
+
     public void Handle(string packet, DateTime now, long? ownId)
     {
+        CheckLimit(now);
         if (!Running) return;
         if (ownId is { } own && _damage.OwnId != own) _damage.SetOwn(own);
         _damage.Handle(packet, now);
@@ -47,7 +54,12 @@ public sealed class Session
 
     public void End(DateTime now)
     {
-        if (!Running) return;
+        CheckLimit(now);
+        if (Running) Stop(now);
+    }
+
+    private void Stop(DateTime now)
+    {
         _end = now;
         _exp.StopRecording(now);
         _usedAtEnd = _uses?.Used(now) ?? [];
@@ -55,8 +67,9 @@ public sealed class Session
 
     public SessionStats Stats(DateTime now)
     {
+        CheckLimit(now);
         var used = ItemUseTracker.Since(_usedAtEnd ?? _uses?.Used(now) ?? [], _usedAtStart);
         IReadOnlyList<ActiveBuff> buffs = Running && _uses != null ? _uses.Buffs(now) : [];
-        return new SessionStats(Running, (_end ?? now) - _start, _damage.Stats(), _exp.Stats(now), _drops.Stats(), used, buffs, _uses?.InventoryKnown ?? false, _kills.Stats());
+        return new SessionStats(Running, (_end ?? now) - _start, _damage.Stats(), _exp.Stats(now), _drops.Stats(), used, buffs, _uses?.InventoryKnown ?? false, _kills.Stats(), _timeIsUp);
     }
 }

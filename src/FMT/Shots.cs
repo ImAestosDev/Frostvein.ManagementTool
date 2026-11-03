@@ -97,7 +97,7 @@ internal static class Shots
         Capture(panel, Path.Combine(outDir, "4l-monsters.png"), () => panel.ShowPage("monsters", false));
         RenderSession(Path.Combine(outDir, "counter-session-idle.png"), null);
         RenderSession(Path.Combine(outDir, "counter-session-running.png"), capture.Session(1));
-        RenderSession(Path.Combine(outDir, "counter-session-warning.png"), capture.Session(1)! with { Duration = SessionStats.Limit });
+        RenderSession(Path.Combine(outDir, "counter-session-warning.png"), capture.Session(1)! with { Running = false, Duration = Session.Limit, TimeIsUp = true });
         capture.EndSession(1);
         Capture(panel, Path.Combine(outDir, "4j-session-ended.png"), () => panel.ShowPage("session", false));
         panel.Height = 1000;

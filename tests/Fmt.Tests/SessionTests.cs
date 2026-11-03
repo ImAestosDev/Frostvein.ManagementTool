@@ -70,20 +70,50 @@ public class SessionTests
     }
 
     [Fact]
-    public void TimeIsUpAfterOneHourAndFifteenSeconds()
+    public void EndsByItselfAfterOneHourAndFifteenSeconds()
     {
         var s = Start();
-        Assert.False(s.Stats(T0.AddSeconds(3614)).TimeIsUp);
-        Assert.True(s.Stats(T0.AddSeconds(3615)).TimeIsUp);
-        Assert.True(s.Running);
+        var before = s.Stats(T0.AddSeconds(3614));
+        Assert.True(before.Running);
+        Assert.False(before.TimeIsUp);
+
+        var after = s.Stats(T0.AddSeconds(3615));
+        Assert.False(after.Running);
+        Assert.True(after.TimeIsUp);
+        Assert.Equal(Session.Limit, s.Stats(T0.AddHours(5)).Duration);
     }
 
     [Fact]
-    public void EndedSessionShowsNoWarning()
+    public void LimitCountsNothingAfterItEvenWithoutADisplay()
+    {
+        var s = Start("lev 85 0 40 500 10000 1000 0 0 0 0 0 0");
+        s.Handle(Hit, T0.AddSeconds(3614), Me);
+        s.Handle(Hit, T0.AddSeconds(3616), Me);
+
+        var stats = s.Stats(T0.AddSeconds(3620));
+        Assert.Equal(1000, stats.Damage.Own!.Total);
+        Assert.True(stats.TimeIsUp);
+        Assert.Equal(Session.Limit, stats.Duration);
+    }
+
+    [Fact]
+    public void EndingEarlyShowsNoWarning()
+    {
+        var s = Start();
+        s.End(T0.AddMinutes(30));
+        var stats = s.Stats(T0.AddHours(3));
+        Assert.False(stats.TimeIsUp);
+        Assert.Equal(TimeSpan.FromMinutes(30), stats.Duration);
+    }
+
+    [Fact]
+    public void EndClickedAfterTheLimitStillUsesTheLimit()
     {
         var s = Start();
         s.End(T0.AddHours(2));
-        Assert.False(s.Stats(T0.AddHours(3)).TimeIsUp);
+        var stats = s.Stats(T0.AddHours(2));
+        Assert.True(stats.TimeIsUp);
+        Assert.Equal(Session.Limit, stats.Duration);
     }
 
     [Fact]
