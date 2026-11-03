@@ -28,6 +28,8 @@ public sealed class PacketCapture : IDisposable
     private readonly Dictionary<uint, DamageMeter> _meters = [];
     private readonly Dictionary<uint, ExpTracker> _exp = [];
     private readonly Dictionary<uint, DropTracker> _drops = [];
+    private readonly Dictionary<uint, Session> _sessions = [];
+    private readonly Dictionary<uint, string> _lastLev = [];
     private readonly Queue<LoggedPacket> _log = new();
     private readonly Dictionary<long, string> _known;
     private readonly NameBook _names;
@@ -189,6 +191,8 @@ public sealed class PacketCapture : IDisposable
         exp.Handle(packet, now);
         if (!_drops.TryGetValue(pid, out var drops)) _drops[pid] = drops = new DropTracker();
         drops.Handle(packet, meter.OwnId);
+        if (packet.StartsWith("lev ", StringComparison.Ordinal)) _lastLev[pid] = packet;
+        if (_sessions.TryGetValue(pid, out var session)) session.Handle(packet, now, meter.OwnId);
         RememberOwn(meter);
         _lastPid = pid;
 
@@ -282,6 +286,33 @@ public sealed class PacketCapture : IDisposable
 
     private DropTracker? DropsOf(uint pid) =>
         _drops.TryGetValue(pid, out var drops) || _drops.TryGetValue(_lastPid, out drops) ? drops : null;
+
+    public void StartSession(uint pid)
+    {
+        lock (_lock)
+        {
+            var key = _meters.ContainsKey(pid) || _lastPid == 0 ? pid : _lastPid;
+            _meters.TryGetValue(key, out var meter);
+            _lastLev.TryGetValue(key, out var lev);
+            _drops.TryGetValue(key, out var drops);
+            var damage = new DamageMeter(_known, _names);
+            if (meter?.OwnId is { } own) damage.SetOwn(own);
+            _sessions[key] = new Session(DateTime.Now, lev, damage, drops);
+        }
+    }
+
+    public void EndSession(uint pid)
+    {
+        lock (_lock) SessionOf(pid)?.End(DateTime.Now);
+    }
+
+    public SessionStats? Session(uint pid)
+    {
+        lock (_lock) return SessionOf(pid)?.Stats(DateTime.Now);
+    }
+
+    private Session? SessionOf(uint pid) =>
+        _sessions.TryGetValue(pid, out var session) || _sessions.TryGetValue(_lastPid, out session) ? session : null;
 
     private ExpTracker? ExpOf(uint pid) =>
         _exp.TryGetValue(pid, out var exp) || _exp.TryGetValue(_lastPid, out exp) ? exp : null;

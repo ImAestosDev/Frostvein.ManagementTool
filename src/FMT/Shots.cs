@@ -73,6 +73,18 @@ internal static class Shots
         }
         Capture(panel, Path.Combine(outDir, "4h-drops.png"), () => panel.ShowPage("drops", false));
         RenderDrops(Path.Combine(outDir, "counter-drops.png"), capture);
+        capture.StartSession(1);
+        capture.Feed(1, "su 1 77 3 500 240 10 11 12 20 30 1 80 45123 0 0");
+        capture.Feed(1, "lev 85 3992000 40 522000 10000000 1000000 100000 50 700000 12 2800000 0");
+        capture.Feed(1, "drop 1012 950 20 30 12 0 77");
+        capture.Feed(1, "get 1 77 950 0");
+        capture.Feed(1, "drop 1046 951 20 30 25000 0 77");
+        capture.Feed(1, "get 1 77 951 0");
+        panel.Height = 1300;
+        Capture(panel, Path.Combine(outDir, "4i-session-running.png"), () => panel.ShowPage("session", false));
+        capture.EndSession(1);
+        Capture(panel, Path.Combine(outDir, "4j-session-ended.png"), () => panel.ShowPage("session", false));
+        panel.Height = 1000;
         Capture(panel, Path.Combine(outDir, "4f-packets.png"), () => panel.ShowPage("packets", false));
         Capture(panel, Path.Combine(outDir, "5-layout.png"), () => panel.ShowPage("layout", false));
         Capture(panel, Path.Combine(outDir, "6-settings.png"), () => panel.ShowPage("settings", false));

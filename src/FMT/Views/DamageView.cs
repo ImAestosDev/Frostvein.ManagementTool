@@ -184,7 +184,7 @@ public sealed class DamageView : PageView
         }
     }
 
-    private static Border PlayerRow(string place, string name, string total, string share, string best, string brush, double size, bool bold, FrameworkElement? mark)
+    public static Border PlayerRow(string place, string name, string total, string share, string best, string brush, double size, bool bold, FrameworkElement? mark)
     {
         var totalText = Ui.T(total, size, brush, bold);
         var shareText = Ui.T(share, size, brush, bold);

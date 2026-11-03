@@ -67,6 +67,11 @@ public sealed class DropTracker
         _items[drop.VNum] = _items.GetValueOrDefault(drop.VNum) + drop.Amount;
     }
 
+    public void TakeOpenFrom(DropTracker other)
+    {
+        foreach (var (id, drop) in other._open) _open[id] = drop;
+    }
+
     public void Reset()
     {
         _order.Clear();

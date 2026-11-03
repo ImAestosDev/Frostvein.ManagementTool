@@ -198,6 +198,7 @@ public sealed class PanelWindow : Window
         Add("dashboard", Ui.G.Home, "Übersicht");
         Add("dailies", Ui.G.Check, "Dailies");
         if (_state.S.LandOfLife.Visible) Add("landoflife", Ui.G.Clock, _state.S.LandOfLife.Name);
+        Add("session", Ui.G.Session, "Session");
         Add("damage", Ui.G.Damage, "Damage");
         Add("exp", Ui.G.Exp, "EXP");
         Add("drops", Ui.G.Drops, "Drops");
@@ -238,6 +239,7 @@ public sealed class PanelWindow : Window
         if (key == "dashboard") return new DashboardView(_state, this);
         if (key == "dailies") return new DailiesView(_state);
         if (key == "landoflife" && _state.S.LandOfLife.Visible) return new LandOfLifeView(_state);
+        if (key == "session") return new SessionView(_state, this);
         if (key == "damage") return new DamageView(_state, this);
         if (key == "exp") return new ExpView(_state, this);
         if (key == "drops") return new DropView(_state, this);

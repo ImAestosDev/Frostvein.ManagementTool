@@ -89,7 +89,7 @@ public sealed class ExpView : PageView
         }
     }
 
-    private static Grid RecordRow(string label, string gained, string perHour, string brush, double size, bool bold)
+    public static Grid RecordRow(string label, string gained, string perHour, string brush, double size, bool bold)
     {
         var gainedText = Ui.T(gained, size, brush);
         var perHourText = Ui.T(perHour, size, brush, bold);
@@ -109,5 +109,5 @@ public sealed class ExpView : PageView
     private static string Time(TimeSpan span) =>
         span.TotalHours >= 1 ? $"{(int)span.TotalHours} h {span.Minutes} min" : $"{Math.Max(span.Minutes, 0)} min";
 
-    private static string Clock(TimeSpan span) => $"{(int)span.TotalHours}:{span.Minutes:00}:{span.Seconds:00}";
+    public static string Clock(TimeSpan span) => $"{(int)span.TotalHours}:{span.Minutes:00}:{span.Seconds:00}";
 }

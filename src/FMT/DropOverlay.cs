@@ -13,7 +13,7 @@ public sealed class DropCard : Border
     private readonly TextBlock _gold = Ui.T("0", 15, bold: true);
     private List<DroppedItem>? _shown;
 
-    public DropCard(Action reset)
+    public DropCard(Action? reset)
     {
         BorderThickness = new Thickness(1);
         Padding = new Thickness(8);
@@ -24,9 +24,12 @@ public sealed class DropCard : Border
 
         _gold.Foreground = Ui.Hex("#F0D264");
         var coin = new Image { Source = ItemCatalog.Icon(DropTracker.GoldVNum), Width = 24, Height = 24, Margin = new Thickness(4, 0, 0, 0), ToolTip = "Gold" };
-        var button = Ui.IconBtn(Ui.G.Undo, "Drops zurücksetzen", reset, 12);
-        button.Padding = new Thickness(5, 2, 5, 2);
-        button.MinHeight = 0;
+        var button = reset == null ? null : Ui.IconBtn(Ui.G.Undo, "Drops zurücksetzen", reset, 12);
+        if (button != null)
+        {
+            button.Padding = new Thickness(5, 2, 5, 2);
+            button.MinHeight = 0;
+        }
         var goldRow = Ui.Cols("Auto,*,Auto,Auto", button, null, _gold, coin);
         goldRow.Margin = new Thickness(0, 6, 0, 0);
         Child = Ui.Col(0, _slots, goldRow);
