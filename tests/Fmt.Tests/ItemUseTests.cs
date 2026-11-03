@@ -123,6 +123,86 @@ public class ItemUseTests
         Assert.Empty(stats.Buffs);
     }
 
+    private static ItemUseTracker Restored(int amount)
+    {
+        var t = New();
+        t.Restore([new SavedStack("1", 3, Potion, amount)]);
+        return t;
+    }
+
+    [Fact]
+    public void RestoredInventoryCountsTheFirstUse()
+    {
+        var t = Restored(50);
+        Assert.True(t.InventoryKnown);
+        t.Handle($"ivn 1 3.{Potion}.49.0", Me, T0);
+        Assert.Equal(1, Used(t, Potion, T0.AddSeconds(5)));
+    }
+
+    [Fact]
+    public void RestoredLastItemCounts()
+    {
+        var t = Restored(1);
+        t.Handle("ivn 1 3.0.0.0.0", Me, T0);
+        Assert.Equal(1, Used(t, Potion, T0.AddSeconds(5)));
+    }
+
+    [Fact]
+    public void OutdatedSlotOnlyUpdatesTheBaseline()
+    {
+        var t = Restored(50);
+        t.Handle($"ivn 1 3.{Potion}.30.0", Me, T0);
+        Assert.Equal(0, Used(t, Potion, T0.AddSeconds(5)));
+        t.Handle($"ivn 1 3.{Potion}.29.0", Me, T0.AddSeconds(5));
+        Assert.Equal(1, Used(t, Potion, T0.AddSeconds(10)));
+    }
+
+    [Fact]
+    public void OutdatedEmptySlotCountsNothing()
+    {
+        var t = Restored(50);
+        t.Handle("ivn 1 3.0.0.0.0", Me, T0);
+        Assert.Equal(0, Used(t, Potion, T0.AddSeconds(5)));
+    }
+
+    [Fact]
+    public void OtherCharacterForgetsTheInventory()
+    {
+        var t = New();
+        t.Handle($"inv 1 3.{Potion}.50.0", Me, T0);
+        t.Handle("mv 3 1 1 1 1", 99, T0);
+        Assert.False(t.InventoryKnown);
+        Assert.Equal(99, t.Owner);
+        t.Handle($"ivn 1 3.{Potion}.49.0", 99, T0);
+        Assert.Equal(0, Used(t, Potion, T0.AddSeconds(5)));
+    }
+
+    [Fact]
+    public void InventoryBookSurvivesARestart()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "fmt-" + Guid.NewGuid().ToString("N") + ".json");
+        try
+        {
+            var t = New();
+            t.Handle($"inv 1 3.{Potion}.50.0", Me, T0);
+            Assert.True(t.InventoryChanged);
+            var book = new InventoryBook();
+            book.Set(Me, t.ExportInventory());
+            Assert.False(t.InventoryChanged);
+            book.Save(path);
+
+            Assert.True(InventoryBook.Load(path).TryGet(Me, out var stacks));
+            var later = New();
+            later.Restore(stacks);
+            later.Handle($"ivn 1 3.{Potion}.49.0", Me, T0);
+            Assert.Equal(1, Used(later, Potion, T0.AddSeconds(5)));
+        }
+        finally
+        {
+            File.Delete(path);
+        }
+    }
+
     [Fact]
     public void CounterResetLeavesSessionsAlone()
     {

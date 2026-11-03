@@ -30,6 +30,7 @@ public sealed class PacketCapture : IDisposable
     private readonly Dictionary<uint, DropTracker> _drops = [];
     private readonly Dictionary<uint, Session> _sessions = [];
     private readonly SessionArchive _archive;
+    private readonly InventoryBook _inventories;
     private static readonly TimeSpan SnapshotEvery = TimeSpan.FromMinutes(1);
     private DateTime _lastSnapshot;
     private readonly Dictionary<uint, KillTracker> _kills = [];
@@ -49,10 +50,11 @@ public sealed class PacketCapture : IDisposable
     private long _packets;
     private DateTime _startedAt;
 
-    public PacketCapture(IDictionary<long, string> myCharacters, IEnumerable<string> hidden, NameBook names, SessionArchive? archive = null)
+    public PacketCapture(IDictionary<long, string> myCharacters, IEnumerable<string> hidden, NameBook names, SessionArchive? archive = null, InventoryBook? inventories = null)
     {
         _names = names;
         _archive = archive ?? new SessionArchive();
+        _inventories = inventories ?? new InventoryBook();
         _known = new Dictionary<long, string>(myCharacters);
         _hidden = new HashSet<string>(hidden, StringComparer.Ordinal);
     }
@@ -200,6 +202,7 @@ public sealed class PacketCapture : IDisposable
         drops.Handle(packet, meter.OwnId);
         if (!_uses.TryGetValue(pid, out var uses)) _uses[pid] = uses = new ItemUseTracker(_watchedItems, _watchedCards);
         uses.Handle(packet, meter.OwnId, now);
+        if (!uses.InventoryKnown && uses.Owner is { } owner && _inventories.TryGet(owner, out var stacks)) uses.Restore(stacks);
         if (!_kills.TryGetValue(pid, out var kills)) _kills[pid] = kills = new KillTracker();
         kills.Handle(packet, meter.OwnId);
         if (packet.StartsWith("lev ", StringComparison.Ordinal)) _lastLev[pid] = packet;
@@ -380,6 +383,25 @@ public sealed class PacketCapture : IDisposable
             try
             {
                 _archive.Save(path);
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+            {
+                // Stays dirty, the next save tries again.
+            }
+        }
+    }
+
+    public void SaveInventories(string path)
+    {
+        lock (_lock)
+        {
+            foreach (var uses in _uses.Values)
+            {
+                if (uses is { InventoryKnown: true, InventoryChanged: true, Owner: { } owner }) _inventories.Set(owner, uses.ExportInventory());
+            }
+            try
+            {
+                _inventories.Save(path);
             }
             catch (Exception e) when (e is IOException or UnauthorizedAccessException)
             {

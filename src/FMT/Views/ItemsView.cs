@@ -5,7 +5,7 @@ namespace Fmt.App;
 // Used items and running buffs of the active client.
 public sealed class ItemsView : PageView
 {
-    private const string UnknownInventory = "FMT kennt dein Inventar noch nicht. Der erste Trank pro Stapel fehlt, bis du einmal neu in deinen Charakter gehst, während FMT mitliest.";
+    private const string UnknownInventory = "FMT kennt dein Inventar noch nicht. Der erste Trank pro Stapel fehlt. Gehst du einmal neu in deinen Charakter, während FMT mitliest, merkt es sich dein Inventar auch über Neustarts hinweg.";
 
     private readonly PanelWindow _shell;
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromMilliseconds(500) };

@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json;
 
 namespace Fmt.Core;
 
@@ -37,6 +38,51 @@ public static class WatchedItems
     public static bool Contains(string name) => Names.Contains(BaseName(name));
 }
 
+public sealed record SavedStack(string Type, int Slot, int VNum, int Amount);
+
+// Last known inventory per character, so a restart of FMT needs no relog.
+public sealed class InventoryBook
+{
+    private readonly Dictionary<long, List<SavedStack>> _characters = [];
+
+    public bool Dirty { get; private set; }
+
+    public void Set(long character, List<SavedStack> stacks)
+    {
+        _characters[character] = stacks;
+        Dirty = true;
+    }
+
+    public bool TryGet(long character, out List<SavedStack> stacks) => _characters.TryGetValue(character, out stacks!);
+
+    public static InventoryBook Load(string path)
+    {
+        var book = new InventoryBook();
+        try
+        {
+            var saved = JsonSerializer.Deserialize<Dictionary<long, List<SavedStack>>>(File.ReadAllText(path));
+            if (saved != null)
+            {
+                foreach (var (id, stacks) in saved) book._characters[id] = stacks;
+            }
+        }
+        catch (Exception e) when (e is IOException or JsonException or UnauthorizedAccessException)
+        {
+            // The next login sends the inventory again.
+        }
+        return book;
+    }
+
+    public void Save(string path)
+    {
+        if (!Dirty) return;
+        var tmp = path + ".tmp";
+        File.WriteAllText(tmp, JsonSerializer.Serialize(_characters));
+        File.Move(tmp, path, true);
+        Dirty = false;
+    }
+}
+
 // Follows main and etc inventory plus own buffs. The game sends no "item used" packet, so a shrinking stack counts.
 public sealed class ItemUseTracker(IReadOnlySet<int> items, IReadOnlySet<int> cards)
 {
@@ -60,17 +106,53 @@ public sealed class ItemUseTracker(IReadOnlySet<int> items, IReadOnlySet<int> ca
     private readonly Dictionary<int, DateTime> _buffs = [];
     private Dictionary<int, int> _counterStart = [];
 
+    // Slots from the last run: anything may have happened to them while FMT was off.
+    private readonly HashSet<(string Type, int Slot)> _stale = [];
+
     public bool InventoryKnown { get; private set; }
+    public long? Owner { get; private set; }
+    public bool InventoryChanged { get; private set; }
 
     public void Handle(string packet, long? ownId, DateTime now)
     {
         Flush(now);
+        if (ownId is { } own)
+        {
+            // Another character has another inventory.
+            if (Owner != null && Owner != own) ForgetInventory();
+            Owner = own;
+        }
         if (packet.StartsWith("inv ", StringComparison.Ordinal)) HandleFull(packet);
         else if (packet.StartsWith("ivn ", StringComparison.Ordinal)) HandleChange(packet, now);
         else if (packet.StartsWith("bf 1 ", StringComparison.Ordinal)) HandleBuff(packet, ownId, now);
     }
 
     private static bool Tracked(string type) => type is MainInventory or EtcInventory;
+
+    private void ForgetInventory()
+    {
+        _slots.Clear();
+        _stale.Clear();
+        InventoryKnown = false;
+        InventoryChanged = false;
+    }
+
+    public void Restore(IEnumerable<SavedStack> stacks)
+    {
+        foreach (var s in stacks)
+        {
+            if (!Tracked(s.Type)) continue;
+            _slots[(s.Type, s.Slot)] = new Stack(s.VNum, s.Amount);
+            _stale.Add((s.Type, s.Slot));
+        }
+        InventoryKnown = true;
+    }
+
+    public List<SavedStack> ExportInventory()
+    {
+        InventoryChanged = false;
+        return _slots.Select(s => new SavedStack(s.Key.Type, s.Key.Slot, s.Value.VNum, s.Value.Amount)).ToList();
+    }
 
     private static bool TryEntry(string entry, out int slot, out Stack stack)
     {
@@ -90,11 +172,13 @@ public sealed class ItemUseTracker(IReadOnlySet<int> items, IReadOnlySet<int> ca
         var t = packet.Split(' ');
         if (t.Length < 2 || !Tracked(t[1])) return;
         foreach (var key in _slots.Keys.Where(k => k.Type == t[1]).ToList()) _slots.Remove(key);
+        _stale.RemoveWhere(k => k.Type == t[1]);
         foreach (var entry in t.Skip(2))
         {
             if (TryEntry(entry, out var slot, out var stack) && stack.VNum > 0 && stack.Amount > 0) _slots[(t[1], slot)] = stack;
         }
         InventoryKnown = true;
+        InventoryChanged = true;
     }
 
     private void HandleChange(string packet, DateTime now)
@@ -104,8 +188,11 @@ public sealed class ItemUseTracker(IReadOnlySet<int> items, IReadOnlySet<int> ca
         var key = (t[1], slot);
         var empty = next.VNum <= 0 || next.Amount <= 0;
         var known = _slots.TryGetValue(key, out var old);
+        // A single use takes one item; more means the saved slot was out of date.
+        if (_stale.Remove(key) && known && ((!empty && old.VNum != next.VNum) || old.Amount - (empty ? 0 : next.Amount) > 1)) known = false;
         if (empty) _slots.Remove(key);
         else _slots[key] = next;
+        InventoryChanged = true;
 
         if (known && (empty || old.VNum != next.VNum)) Lost(old.VNum, old.Amount, now);
         else if (known && next.Amount < old.Amount) Lost(old.VNum, old.Amount - next.Amount, now);
