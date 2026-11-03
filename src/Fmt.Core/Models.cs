@@ -125,6 +125,9 @@ public sealed class Settings
     public bool ShowSessionOverlay { get; set; } = true;
     public double SessionOverlayX { get; set; } = 0.35;
     public double SessionOverlayY { get; set; } = 0.12;
+    public bool ShowLandOverlay { get; set; } = true;
+    public double LandOverlayX { get; set; } = 0.7;
+    public double LandOverlayY { get; set; } = 0.5;
     public LandOfLifeSettings LandOfLife { get; set; } = new();
     public double PillX { get; set; } = DefaultPillX;
     public double PillY { get; set; } = DefaultPillY;

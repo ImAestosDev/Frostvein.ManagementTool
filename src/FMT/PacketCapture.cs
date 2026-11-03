@@ -29,6 +29,7 @@ public sealed class PacketCapture : IDisposable
     private readonly Dictionary<uint, ExpTracker> _exp = [];
     private readonly Dictionary<uint, DropTracker> _drops = [];
     private readonly Dictionary<uint, Session> _sessions = [];
+    private readonly Dictionary<uint, LandTracker> _land = [];
     private readonly SessionArchive _archive;
     private readonly InventoryBook _inventories;
     private static readonly TimeSpan SnapshotEvery = TimeSpan.FromMinutes(1);
@@ -200,6 +201,8 @@ public sealed class PacketCapture : IDisposable
         exp.Handle(packet, now);
         if (!_drops.TryGetValue(pid, out var drops)) _drops[pid] = drops = new DropTracker();
         drops.Handle(packet, meter.OwnId);
+        if (!_land.TryGetValue(pid, out var land)) _land[pid] = land = new LandTracker();
+        land.Handle(packet, now);
         if (!_uses.TryGetValue(pid, out var uses)) _uses[pid] = uses = new ItemUseTracker(_watchedItems, _watchedCards);
         uses.Handle(packet, meter.OwnId, now);
         if (!uses.InventoryKnown && uses.Owner is { } owner && _inventories.TryGet(owner, out var stacks)) uses.Restore(stacks);
@@ -447,6 +450,16 @@ public sealed class PacketCapture : IDisposable
 
     private KillTracker? KillsOf(uint pid) =>
         _kills.TryGetValue(pid, out var kills) || _kills.TryGetValue(_lastPid, out kills) ? kills : null;
+
+    public LandStats Land(uint pid, LandOfLifeSettings settings)
+    {
+        lock (_lock)
+        {
+            return _land.TryGetValue(pid, out var land) || _land.TryGetValue(_lastPid, out land)
+                ? land.Stats(DateTime.Now, TimeSpan.FromMinutes(settings.GoldDragonMinutes), TimeSpan.FromMinutes(settings.HolyDragonMinutes))
+                : LandStats.Empty;
+        }
+    }
 
     private ExpTracker? ExpOf(uint pid) =>
         _exp.TryGetValue(pid, out var exp) || _exp.TryGetValue(_lastPid, out exp) ? exp : null;

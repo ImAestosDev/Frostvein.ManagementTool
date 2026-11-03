@@ -103,6 +103,21 @@ internal static class Shots
         Capture(panel, Path.Combine(outDir, "4m-history.png"), () => panel.ShowPage("sessions", false));
         Capture(panel, Path.Combine(outDir, "4n-history-detail.png"), () => ((SessionHistoryView)panel.CurrentPage!).Open(capture.SavedSessions()[0]));
         panel.Height = 1000;
+        foreach (var line in new[] { "in 3 809 700 1 1 2 100 100 0", "in 3 809 701 1 1 2 100 100 0", "in 3 1481 702 1 1 2 100 100 0", "in 3 1461 710 1 1 2 100 100 0", "in 3 1482 711 1 1 2 100 100 0", "msgi 0 2566 0 0 0 0 0", "su 1 77 3 701 240 10 11 12 20 30 0 0 500 0 0", "su 1 77 3 710 240 10 11 12 20 30 0 0 500 0 0" })
+            capture.Feed(1, line);
+        panel.Height = 1900;
+        Capture(panel, Path.Combine(outDir, "2c-land-timers.png"), () => panel.ShowPage("landoflife", false));
+        panel.Height = 1000;
+        var landCard = new LandCard();
+        landCard.Show(capture.Land(1, state.S.LandOfLife));
+        landCard.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        landCard.Arrange(new Rect(landCard.DesiredSize));
+        landCard.UpdateLayout();
+        var landBitmap = new RenderTargetBitmap((int)Math.Ceiling(landCard.ActualWidth), (int)Math.Ceiling(landCard.ActualHeight), 96, 96, PixelFormats.Pbgra32);
+        landBitmap.Render(landCard);
+        var landPng = new PngBitmapEncoder();
+        landPng.Frames.Add(BitmapFrame.Create(landBitmap));
+        using (var landFile = File.Create(Path.Combine(outDir, "counter-land.png"))) landPng.Save(landFile);
         Capture(panel, Path.Combine(outDir, "4f-packets.png"), () => panel.ShowPage("packets", false));
         Capture(panel, Path.Combine(outDir, "5-layout.png"), () => panel.ShowPage("layout", false));
         Capture(panel, Path.Combine(outDir, "6-settings.png"), () => panel.ShowPage("settings", false));

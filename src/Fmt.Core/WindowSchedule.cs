@@ -7,6 +7,8 @@ public sealed class LandOfLifeSettings
     public int WindowMinutes { get; set; } = 120;
     public int MarkerOffsetMinutes { get; set; } = 60;
     public string MarkerLabel { get; set; } = "Event";
+    public int GoldDragonMinutes { get; set; } = 5;
+    public int HolyDragonMinutes { get; set; } = 5;
 }
 
 public sealed record ScheduleSlot(int StartMinute, int EndMinute, int MarkerMinute);

@@ -27,14 +27,48 @@ public sealed class LandOfLifeView : PageView
     private readonly AppState _state;
     private readonly ScrollViewer _scroll = new() { VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
     private readonly DispatcherTimer _timer = new() { Interval = TimeSpan.FromSeconds(20) };
+    private readonly DispatcherTimer _liveTimer = new() { Interval = TimeSpan.FromMilliseconds(500) };
+    private readonly PanelWindow _shell;
+    private readonly LandCard _live = new();
 
-    public LandOfLifeView(AppState state)
+    public LandOfLifeView(AppState state, PanelWindow shell)
     {
         _state = state;
+        _shell = shell;
         Content = _scroll;
         _timer.Tick += (_, _) => Refresh();
-        Loaded += (_, _) => _timer.Start();
-        Unloaded += (_, _) => _timer.Stop();
+        _liveTimer.Tick += (_, _) => UpdateLive();
+        Loaded += (_, _) =>
+        {
+            _timer.Start();
+            _liveTimer.Start();
+        };
+        Unloaded += (_, _) =>
+        {
+            _timer.Stop();
+            _liveTimer.Stop();
+        };
+    }
+
+    private void UpdateLive()
+    {
+        if (_shell.Capture is { IsRunning: true } capture) _live.Show(capture.Land(_shell.GamePid, _state.S.LandOfLife));
+    }
+
+    private FrameworkElement LiveSection()
+    {
+        (_live.Parent as Panel)?.Children.Remove(_live);
+        var col = Ui.Col(8, Ui.T("Asgobas und Drachen", 14, bold: true));
+        if (_shell.Capture is not { IsRunning: true })
+        {
+            Ui.AddTo(col, DamageView.StartCard(_shell, Refresh), 8);
+            return col;
+        }
+        var s = _state.S;
+        UpdateLive();
+        Ui.AddTo(col, _live, 8);
+        Ui.AddTo(col, Ui.Check("Kleine Anzeige über dem Spiel", s.ShowLandOverlay, v => { s.ShowLandOverlay = v; _state.TouchSettings(); }), 8);
+        return col;
     }
 
     public override void Refresh()
@@ -47,6 +81,7 @@ public sealed class LandOfLifeView : PageView
 
         var col = new StackPanel { Margin = new Thickness(14, 12, 12, 16) };
         Ui.AddTo(col, Ui.T(s.Name, 18, bold: true), 0);
+        Ui.AddTo(col, LiveSection(), 10);
         Ui.AddTo(col, CurrentCard(s, slots[current.SlotIndex], current, now), 10);
         Ui.AddTo(col, TableCard(s, slots, current.SlotIndex), 10);
         Ui.AddTo(col, Ui.T("EXP nach Level-Unterschied", 14, bold: true), 16);

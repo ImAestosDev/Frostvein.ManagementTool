@@ -190,10 +190,13 @@ public sealed class SettingsView(AppState state, Action hotkeysChanged, Updater?
         var label = Ui.Input(s.MarkerLabel, v => { s.MarkerLabel = v; state.Touch(); });
         var length = Ui.Labeled("Fensterlänge in Minuten", Minutes(s.WindowMinutes, v => s.WindowMinutes = v, 15, 1440));
         var offset = Ui.Labeled("Icon-Zeit nach Fensterstart, Minuten", Minutes(s.MarkerOffsetMinutes, v => s.MarkerOffsetMinutes = v, 0, 1439));
+        var gold = Ui.Labeled("Golddrache: Respawn in Minuten", Minutes(s.GoldDragonMinutes, v => s.GoldDragonMinutes = v, 1, 240));
+        var holy = Ui.Labeled("Heiliger Untoter Drache: Respawn in Minuten", Minutes(s.HolyDragonMinutes, v => s.HolyDragonMinutes = v, 1, 240));
         return Section("Land der Lebenden",
             Ui.Check("Tab anzeigen", s.Visible, v => { s.Visible = v; state.TouchStructure(); }),
             new UniformRow(8, Ui.Labeled("Name", name), Ui.Labeled("Name der Icon-Zeit", label)),
-            new UniformRow(8, length, offset));
+            new UniformRow(8, length, offset),
+            new UniformRow(8, gold, holy));
     }
 
     private FrameworkElement HotkeyCard()

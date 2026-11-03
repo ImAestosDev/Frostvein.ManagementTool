@@ -122,15 +122,24 @@ public static class Ui
     public static void AddTo(StackPanel s, UIElement? child, double gap)
     {
         if (child == null) return;
-        if (s.Children.Count > 0 && child is FrameworkElement f)
+        if (child is FrameworkElement f)
         {
-            var m = f.Margin;
-            f.Margin = s.Orientation == Orientation.Vertical
-                ? new Thickness(m.Left, m.Top + gap, m.Right, m.Bottom)
-                : new Thickness(m.Left + gap, m.Top, m.Right, m.Bottom);
+            // Elements re-added on a page refresh must not collect the gap again.
+            var m = Gapped.TryGetValue(f, out var last) && last.Applied == f.Margin ? last.Own : f.Margin;
+            var applied = s.Children.Count == 0
+                ? m
+                : s.Orientation == Orientation.Vertical
+                    ? new Thickness(m.Left, m.Top + gap, m.Right, m.Bottom)
+                    : new Thickness(m.Left + gap, m.Top, m.Right, m.Bottom);
+            f.Margin = applied;
+            Gapped.AddOrUpdate(f, new GapMargin(m, applied));
         }
         s.Children.Add(child);
     }
+
+    private sealed record GapMargin(Thickness Own, Thickness Applied);
+
+    private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<FrameworkElement, GapMargin> Gapped = [];
 
     // Columns spec such as "*,Auto,120"; children fill the columns left to right.
     public static Grid Cols(string spec, params UIElement?[] children)

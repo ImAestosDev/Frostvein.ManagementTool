@@ -246,7 +246,7 @@ public sealed class PanelWindow : Window
     {
         if (key == "dashboard") return new DashboardView(_state, this);
         if (key == "dailies") return new DailiesView(_state);
-        if (key == "landoflife" && _state.S.LandOfLife.Visible) return new LandOfLifeView(_state);
+        if (key == "landoflife" && _state.S.LandOfLife.Visible) return new LandOfLifeView(_state, this);
         if (key == "session") return new SessionView(_state, this);
         if (key == "sessions") return new SessionHistoryView(this);
         if (key == "damage") return new DamageView(_state, this);
