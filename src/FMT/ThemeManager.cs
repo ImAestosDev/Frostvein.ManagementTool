@@ -1,3 +1,5 @@
+using System.Windows.Media.Imaging;
+
 namespace Fmt.App;
 
 public static class ThemeManager
@@ -37,8 +39,8 @@ public static class ThemeManager
         },
         [NosTaleSkin] = new ThemeSettings
         {
-            Background = "#1A222C", Surface = "#2B3645", Surface2 = "#3B4A5C", Border = "#64778C",
-            Text = "#F0F3F6", Muted = "#B0BDCA", Accent = "#3F7FD0", Positive = "#7FD27F", Negative = "#E5787C",
+            Background = "#111517", Surface = "#1C2229", Surface2 = "#454F5E", Border = "#606467",
+            Text = "#F2F2F2", Muted = "#B4BAC2", Accent = "#2E6FD0", Positive = "#7FD27F", Negative = "#E5787C",
         },
     };
 
@@ -50,11 +52,13 @@ public static class ThemeManager
     public static void ApplyPreset(ThemeSettings t, string name)
     {
         var p = Presets[name];
+        // Leaving the skin gives back what it changed.
+        if (t.Preset == NosTaleSkin && name != NosTaleSkin) (t.Radius, t.Opacity) = (p.Radius, p.Opacity);
         t.Preset = name;
         (t.Background, t.Surface, t.Surface2, t.Border, t.Text, t.Muted, t.Accent, t.Positive, t.Negative) =
             (p.Background, p.Surface, p.Surface2, p.Border, p.Text, p.Muted, p.Accent, p.Positive, p.Negative);
         if (name is "Dunkel" or NosTaleSkin) t.Opacity = 1;
-        if (name == NosTaleSkin) t.Radius = 3;
+        if (name == NosTaleSkin) t.Radius = 0;
     }
 
     public static void Apply(ThemeSettings t)
@@ -76,24 +80,68 @@ public static class ThemeManager
         res["Corner"] = new CornerRadius(t.Radius);
         res["CornerSmall"] = new CornerRadius(Math.Max(0, t.Radius - 3));
         res["AccentFill"] = res["Accent"];
+        res["AccentLine"] = res["Accent"];
+        res["ButtonFill"] = res["Surface2"];
+        res["ButtonLine"] = res["Line"];
+        res["GhostFill"] = Brushes.Transparent;
+        res["GhostLine"] = Brushes.Transparent;
+        res["NavLine"] = Brushes.Transparent;
+        res["HeaderFill"] = Brushes.Transparent;
+        res["HeaderLine"] = res["Line"];
+        res["FrameOuter"] = Brushes.Transparent;
+        res["ThumbFill"] = res["Line"];
+        res["SlotFill"] = Fade("#54657A", "#3E4C5E");
+        res["SlotLine"] = Frozen(Ui.ColorOf("#7E93AB"));
+        res["SlotCorner"] = new CornerRadius(2);
+        res["HeaderHeight"] = 40.0;
 
         var nosTale = t.Preset == NosTaleSkin;
         res["UiFont"] = new FontFamily(nosTale ? NosTaleFont : DefaultFont);
         if (!nosTale) return;
-        // The game's panels and buttons fade from light at the top to dark at the bottom.
-        var top = Ui.ColorOf("#2A3644");
-        top.A = bg.A;
-        res["Bg"] = Fade(top, bg);
-        res["Surface"] = Fade(Ui.ColorOf("#35434F"), Ui.ColorOf(t.Surface));
-        res["Surface2"] = Fade(Ui.ColorOf("#4C5D70"), Ui.ColorOf(t.Surface2));
-        res["AccentFill"] = Fade(Ui.ColorOf("#6AA6EC"), Ui.ColorOf("#2C62AE"));
+
+        // Colors measured from the game's windows: hard edges, faint scanlines, black title bars.
+        res["Surface2"] = Scanlines("#454F5E", "#485261");
+        res["SlotFill"] = res["Surface2"];
+        res["SlotLine"] = Frozen(Ui.ColorOf("#8F9BAD"));
+        res["SlotCorner"] = new CornerRadius(0);
+        res["AccentFill"] = Fade("#5E9CEB", "#2559A8");
+        res["AccentLine"] = Frozen(Ui.ColorOf("#A9CBF2"));
+        res["ButtonFill"] = Fade("#4B4D4F", "#2B2D31");
+        res["ButtonLine"] = Frozen(Ui.ColorOf("#7C7C7C"));
+        res["GhostFill"] = Fade("#474847", "#2B2D31");
+        res["GhostLine"] = Frozen(Ui.ColorOf("#7C7C7C"));
+        res["NavLine"] = Frozen(Ui.ColorOf("#8F9BAD"));
+        res["HeaderFill"] = Fade("#474847", "#0E1014");
+        res["HeaderLine"] = Frozen(Colors.Black);
+        res["FrameOuter"] = Frozen(Colors.Black);
+        res["ThumbFill"] = Fade("#6B6B6B", "#3F4140");
+        res["HeaderHeight"] = 32.0;
     }
 
-    private static LinearGradientBrush Fade(Color top, Color bottom)
+    private static LinearGradientBrush Fade(string top, string bottom)
     {
-        var b = new LinearGradientBrush(top, bottom, 90);
+        var b = new LinearGradientBrush(Ui.ColorOf(top), Ui.ColorOf(bottom), 90);
         b.Freeze();
         return b;
+    }
+
+    // Every third row is a touch lighter, as in the game's inventory slots.
+    private static ImageBrush Scanlines(string color, string line)
+    {
+        var (a, b) = (Ui.ColorOf(color), Ui.ColorOf(line));
+        byte[] pixels = [a.B, a.G, a.R, 255, a.B, a.G, a.R, 255, b.B, b.G, b.R, 255];
+        var tile = BitmapSource.Create(1, 3, 96, 96, PixelFormats.Bgra32, null, pixels, 4);
+        tile.Freeze();
+        var brush = new ImageBrush(tile)
+        {
+            TileMode = TileMode.Tile,
+            Stretch = Stretch.None,
+            ViewportUnits = BrushMappingMode.Absolute,
+            Viewport = new Rect(0, 0, 1, 3),
+        };
+        RenderOptions.SetBitmapScalingMode(brush, BitmapScalingMode.NearestNeighbor);
+        brush.Freeze();
+        return brush;
     }
 
     private static double Luminance(Color c) => (0.2126 * c.R + 0.7152 * c.G + 0.0722 * c.B) / 255;

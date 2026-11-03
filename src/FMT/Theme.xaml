@@ -2,9 +2,9 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <Style TargetType="Button">
-        <Setter Property="Background" Value="{DynamicResource Surface2}" />
+        <Setter Property="Background" Value="{DynamicResource ButtonFill}" />
         <Setter Property="Foreground" Value="{DynamicResource Ink}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource Line}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ButtonLine}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="Padding" Value="11,6" />
         <Setter Property="Cursor" Value="Hand" />
@@ -38,7 +38,7 @@
 
     <Style x:Key="Primary" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
         <Setter Property="Background" Value="{DynamicResource AccentFill}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource Accent}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentLine}" />
         <Setter Property="Foreground" Value="{DynamicResource AccentInk}" />
     </Style>
 
@@ -50,7 +50,8 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Border x:Name="B" Background="Transparent" CornerRadius="{DynamicResource CornerSmall}" Padding="{TemplateBinding Padding}">
+                    <Border x:Name="B" Background="{DynamicResource GhostFill}" BorderBrush="{DynamicResource GhostLine}" BorderThickness="1"
+                            CornerRadius="{DynamicResource CornerSmall}" Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
                         <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
                     <ControlTemplate.Triggers>
@@ -73,7 +74,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="RadioButton">
-                    <Border x:Name="B" Background="Transparent" CornerRadius="{DynamicResource CornerSmall}" Padding="9,7" Margin="0,1">
+                    <Border x:Name="B" Background="Transparent" BorderBrush="Transparent" BorderThickness="1" CornerRadius="{DynamicResource CornerSmall}" Padding="8,6" Margin="0,1" SnapsToDevicePixels="True">
                         <ContentPresenter />
                     </Border>
                     <ControlTemplate.Triggers>
@@ -82,6 +83,7 @@
                         </Trigger>
                         <Trigger Property="IsChecked" Value="True">
                             <Setter TargetName="B" Property="Background" Value="{DynamicResource Surface2}" />
+                            <Setter TargetName="B" Property="BorderBrush" Value="{DynamicResource NavLine}" />
                             <Setter Property="Foreground" Value="{DynamicResource Ink}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
@@ -214,7 +216,7 @@
             <Setter.Value>
                 <ControlTemplate TargetType="CheckBox">
                     <StackPanel Orientation="Horizontal" Background="Transparent">
-                        <Border x:Name="Box" Width="18" Height="18" CornerRadius="5" BorderThickness="1.5" BorderBrush="{DynamicResource Muted}" Background="Transparent" VerticalAlignment="Center">
+                        <Border x:Name="Box" Width="18" Height="18" CornerRadius="{DynamicResource CornerSmall}" BorderThickness="1.5" BorderBrush="{DynamicResource Muted}" Background="Transparent" VerticalAlignment="Center">
                             <TextBlock x:Name="Tick" Text="&#xE73E;" FontFamily="Segoe Fluent Icons, Segoe MDL2 Assets" FontSize="11" Foreground="{DynamicResource AccentInk}"
                                        HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Hidden" />
                         </Border>
@@ -292,7 +294,7 @@
                             <Thumb>
                                 <Thumb.Template>
                                     <ControlTemplate TargetType="Thumb">
-                                        <Border x:Name="T" CornerRadius="3" Margin="1,2" Background="{DynamicResource Line}" />
+                                        <Border x:Name="T" CornerRadius="{DynamicResource CornerSmall}" Margin="1,2" Background="{DynamicResource ThumbFill}" />
                                         <ControlTemplate.Triggers>
                                             <Trigger Property="IsMouseOver" Value="True">
                                                 <Setter TargetName="T" Property="Background" Value="{DynamicResource Muted}" />

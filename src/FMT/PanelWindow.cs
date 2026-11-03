@@ -89,7 +89,9 @@ public sealed class PanelWindow : Window
 
     private UIElement BuildShell()
     {
-        var header = new DockPanel { Height = 40, Background = Brushes.Transparent, Cursor = Cursors.SizeAll, LastChildFill = true };
+        var header = new DockPanel { Cursor = Cursors.SizeAll, LastChildFill = true };
+        header.SetResourceReference(HeightProperty, "HeaderHeight");
+        header.SetResourceReference(Panel.BackgroundProperty, "HeaderFill");
         header.MouseLeftButtonDown += (_, _) => BeginDrag();
 
         var close = Ui.IconBtn(Ui.G.Close, "Schließen (Esc)", Hide2);
@@ -123,7 +125,7 @@ public sealed class PanelWindow : Window
         _body.Children.Add(_toast);
 
         var line = new Border { Height = 1 };
-        line.SetResourceReference(Border.BackgroundProperty, "Line");
+        line.SetResourceReference(Border.BackgroundProperty, "HeaderLine");
 
         var layout = new DockPanel { LayoutTransform = _scale };
         DockPanel.SetDock(header, Dock.Top);
@@ -144,7 +146,10 @@ public sealed class PanelWindow : Window
         root.SetResourceReference(Border.BackgroundProperty, "Bg");
         root.SetResourceReference(Border.BorderBrushProperty, "Line");
         root.SetResourceReference(Border.CornerRadiusProperty, "Corner");
-        return root;
+        var frame = new Border { Child = root, BorderThickness = new Thickness(1) };
+        frame.SetResourceReference(Border.BorderBrushProperty, "FrameOuter");
+        frame.SetResourceReference(Border.CornerRadiusProperty, "Corner");
+        return frame;
     }
 
     private async void RestartApp()

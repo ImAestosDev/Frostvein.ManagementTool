@@ -56,11 +56,12 @@ public sealed class DropCard : Border
             Width = SlotSize,
             Height = SlotSize,
             Margin = new Thickness(1.5),
-            CornerRadius = new CornerRadius(2),
             BorderThickness = new Thickness(1),
-            BorderBrush = Ui.Hex("#7E93AB"),
-            Background = new LinearGradientBrush(Ui.ColorOf("#54657A"), Ui.ColorOf("#3E4C5E"), 90),
+            SnapsToDevicePixels = true,
         };
+        slot.SetResourceReference(Border.BackgroundProperty, "SlotFill");
+        slot.SetResourceReference(Border.BorderBrushProperty, "SlotLine");
+        slot.SetResourceReference(Border.CornerRadiusProperty, "SlotCorner");
         if (item == null) return slot;
 
         var amount = Ui.T(DamageCard.Number(item.Amount), 11, bold: true);
