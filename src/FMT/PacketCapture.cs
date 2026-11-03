@@ -456,7 +456,7 @@ public sealed class PacketCapture : IDisposable
         lock (_lock)
         {
             return _land.TryGetValue(pid, out var land) || _land.TryGetValue(_lastPid, out land)
-                ? land.Stats(DateTime.Now, TimeSpan.FromMinutes(settings.GoldDragonMinutes), TimeSpan.FromMinutes(settings.HolyDragonMinutes))
+                ? land.Stats(DateTime.Now, TimeSpan.FromSeconds(settings.GoldDragonSeconds), TimeSpan.FromSeconds(settings.HolyDragonSeconds))
                 : LandStats.Empty;
         }
     }

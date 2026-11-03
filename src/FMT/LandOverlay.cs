@@ -46,9 +46,10 @@ public sealed class LandCard : Border
         var first = true;
         foreach (var d in dragons)
         {
-            var time = d.Id == null ? "–" : d.Dead ? Clock(d.Remaining) : "Lebt";
-            Ui.AddTo(_rows, Ui.Cols("*,Auto", Ui.T(name, 12, d.Id == null ? "Muted" : "Ink", trim: true), Ui.T(time, 12, d.Id == null ? "Muted" : d.Dead ? "Ink" : "Positive", bold: d.Dead)), first ? gap : 4);
-            Ui.AddTo(_rows, Ui.Bar(d.Dead ? d.Fraction : d.Id == null ? 0 : 1, d.Dead ? "Accent" : "Positive", 5), 2);
+            // A dragon nobody killed is alive, seen yet or not.
+            var time = d.Dead ? Clock(d.Remaining) : "Lebt";
+            Ui.AddTo(_rows, Ui.Cols("*,Auto", Ui.T(name, 12, trim: true), Ui.T(time, 12, d.Dead ? "Ink" : "Positive", bold: d.Dead)), first ? gap : 4);
+            Ui.AddTo(_rows, Ui.Bar(d.Dead ? d.Fraction : 1, d.Dead ? "Accent" : "Positive", 5), 2);
             first = false;
         }
     }
