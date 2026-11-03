@@ -11,6 +11,7 @@ public sealed class SessionView : PageView
     private readonly TextBlock _time = Ui.T("", 13, "Muted");
     private readonly StackPanel _players = new();
     private readonly StackPanel _exp = new();
+    private readonly StackPanel _kills = new();
     private readonly StackPanel _used = new();
     private readonly StackPanel _buffs = new();
     private readonly TextBlock _usedHint = Ui.T("", 12, "Muted", wrap: true);
@@ -35,6 +36,7 @@ public sealed class SessionView : PageView
         (_time.Parent as Panel)?.Children.Remove(_time);
         if (_players.Parent is Border players) players.Child = null;
         if (_exp.Parent is Border exp) exp.Child = null;
+        if (_kills.Parent is Border kills) kills.Child = null;
         if (_used.Parent is Border used) used.Child = null;
         if (_buffs.Parent is Border buffs) buffs.Child = null;
         (_usedHint.Parent as Panel)?.Children.Remove(_usedHint);
@@ -73,6 +75,8 @@ public sealed class SessionView : PageView
             Ui.AddTo(results, Ui.Card(_exp), 8);
             Ui.AddTo(results, Ui.T("Drops", 14, bold: true), 16);
             Ui.AddTo(results, _drops, 8);
+            Ui.AddTo(results, Ui.T("Monster", 14, bold: true), 16);
+            Ui.AddTo(results, Ui.Card(_kills), 8);
             Ui.AddTo(results, Ui.T("Benutzte Items", 14, bold: true), 16);
             Ui.AddTo(results, Ui.Card(_used), 8);
             Ui.AddTo(results, _usedHint, 6);
@@ -108,6 +112,7 @@ public sealed class SessionView : PageView
         FillPlayers(stats.Damage);
         FillExp(stats);
         _drops?.Show(stats.Drops);
+        MonstersView.FillKills(_kills, stats.Kills);
         ItemsView.FillUsed(_used, stats.Used);
         ItemsView.FillHint(_usedHint, stats.InventoryKnown);
         ItemsView.FillBuffs(_buffs, _buffsCard, stats.Buffs);

@@ -27,7 +27,7 @@ internal static class Shots
 
         Capture(panel, Path.Combine(outDir, "1-dashboard.png"), () => panel.ShowPage("dashboard", false));
         Capture(panel, Path.Combine(outDir, "2-dailies.png"), () => panel.ShowPage("dailies", false));
-        panel.Height = 1500;
+        panel.Height = 1700;
         Capture(panel, Path.Combine(outDir, "2b-landoflife.png"), () => panel.ShowPage("landoflife", false));
         panel.Height = 1000;
         Capture(panel, Path.Combine(outDir, "3-trading.png"), () => panel.ShowPage("cat:" + trading, false));
@@ -75,7 +75,11 @@ internal static class Shots
         RenderDrops(Path.Combine(outDir, "counter-drops.png"), capture);
         capture.Feed(1, "inv 1 3.1242.50.0 4.1011.20.0");
         capture.Feed(1, "inv 2 7.2329.2.0");
+        capture.Feed(1, "in 3 333 600 10 10 2 100 100 0 0 0 -1 1 0");
+        capture.Feed(1, "in 3 1 601 10 10 2 100 100 0 0 0 -1 1 0");
+        capture.Feed(1, "in 3 2 602 10 10 2 100 100 0 0 0 -1 1 0");
         capture.StartSession(1);
+        foreach (var id in new[] { 600, 601, 602 }) capture.Feed(1, $"su 1 77 3 {id} 240 10 11 12 20 30 0 0 500 0 0");
         capture.Feed(1, "ivn 1 3.1242.38.0");
         capture.Feed(1, "ivn 2 7.2329.1.0");
         capture.Feed(1, "bf 1 77 0.121.21000 90");
@@ -87,9 +91,10 @@ internal static class Shots
         capture.Feed(1, "get 1 77 951 0");
         System.Threading.Thread.Sleep(1600);
         capture.Feed(1, "mv 3 1 1 1 1");
-        panel.Height = 1500;
+        panel.Height = 1700;
         Capture(panel, Path.Combine(outDir, "4i-session-running.png"), () => panel.ShowPage("session", false));
         Capture(panel, Path.Combine(outDir, "4k-items.png"), () => panel.ShowPage("items", false));
+        Capture(panel, Path.Combine(outDir, "4l-monsters.png"), () => panel.ShowPage("monsters", false));
         capture.EndSession(1);
         Capture(panel, Path.Combine(outDir, "4j-session-ended.png"), () => panel.ShowPage("session", false));
         panel.Height = 1000;

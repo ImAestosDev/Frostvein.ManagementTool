@@ -13,7 +13,7 @@ public static class ItemCatalog
     private sealed record Row(string Icon, string Name);
 
     private static Dictionary<int, Row>? _rows;
-    private static Dictionary<int, string>? _cards;
+    private static Dictionary<int, string>? _cards, _monsters;
     private static ZipArchive? _icons;
     private static readonly Dictionary<string, ImageSource?> Cache = [];
 
@@ -30,18 +30,22 @@ public static class ItemCatalog
     public static string CardName(int card) =>
         Cards.TryGetValue(card, out var name) ? WatchedItems.BaseName(name) : $"Buff {card}";
 
+    public static string MonsterName(int vnum) =>
+        vnum == KillTracker.UnknownMonster ? "Unbekanntes Monster"
+        : (_monsters ??= LoadPairs("monsters.tsv")).TryGetValue(vnum, out var name) ? name : $"Monster {vnum}";
+
     public static IReadOnlySet<int> WatchedVNums() =>
         Rows.Where(r => WatchedItems.Contains(r.Value.Name)).Select(r => r.Key).ToHashSet();
 
     public static IReadOnlySet<int> WatchedCards() =>
         Cards.Where(c => WatchedItems.Contains(c.Value)).Select(c => c.Key).ToHashSet();
 
-    private static Dictionary<int, string> Cards => _cards ??= LoadCards();
+    private static Dictionary<int, string> Cards => _cards ??= LoadPairs("cards.tsv");
 
-    private static Dictionary<int, string> LoadCards()
+    private static Dictionary<int, string> LoadPairs(string file)
     {
         var cards = new Dictionary<int, string>();
-        using var stream = Open("cards.tsv");
+        using var stream = Open(file);
         if (stream == null) return cards;
         using var reader = new StreamReader(stream, Encoding.UTF8);
         while (reader.ReadLine() is { } line)

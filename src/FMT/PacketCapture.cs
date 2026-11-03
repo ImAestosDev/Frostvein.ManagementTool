@@ -29,6 +29,7 @@ public sealed class PacketCapture : IDisposable
     private readonly Dictionary<uint, ExpTracker> _exp = [];
     private readonly Dictionary<uint, DropTracker> _drops = [];
     private readonly Dictionary<uint, Session> _sessions = [];
+    private readonly Dictionary<uint, KillTracker> _kills = [];
     private readonly Dictionary<uint, ItemUseTracker> _uses = [];
     private readonly IReadOnlySet<int> _watchedItems = ItemCatalog.WatchedVNums(), _watchedCards = ItemCatalog.WatchedCards();
     private readonly Dictionary<uint, string> _lastLev = [];
@@ -195,6 +196,8 @@ public sealed class PacketCapture : IDisposable
         drops.Handle(packet, meter.OwnId);
         if (!_uses.TryGetValue(pid, out var uses)) _uses[pid] = uses = new ItemUseTracker(_watchedItems, _watchedCards);
         uses.Handle(packet, meter.OwnId, now);
+        if (!_kills.TryGetValue(pid, out var kills)) _kills[pid] = kills = new KillTracker();
+        kills.Handle(packet, meter.OwnId);
         if (packet.StartsWith("lev ", StringComparison.Ordinal)) _lastLev[pid] = packet;
         if (_sessions.TryGetValue(pid, out var session)) session.Handle(packet, now, meter.OwnId);
         RememberOwn(meter);
@@ -302,7 +305,8 @@ public sealed class PacketCapture : IDisposable
             var damage = new DamageMeter(_known, _names);
             if (meter?.OwnId is { } own) damage.SetOwn(own);
             if (!_uses.TryGetValue(key, out var uses)) _uses[key] = uses = new ItemUseTracker(_watchedItems, _watchedCards);
-            _sessions[key] = new Session(DateTime.Now, lev, damage, drops, uses);
+            _kills.TryGetValue(key, out var kills);
+            _sessions[key] = new Session(DateTime.Now, lev, damage, drops, uses, kills);
         }
     }
 
@@ -331,6 +335,19 @@ public sealed class PacketCapture : IDisposable
 
     private ItemUseTracker? UsesOf(uint pid) =>
         _uses.TryGetValue(pid, out var uses) || _uses.TryGetValue(_lastPid, out uses) ? uses : null;
+
+    public KillStats Kills(uint pid)
+    {
+        lock (_lock) return KillsOf(pid)?.Stats() ?? KillStats.Empty;
+    }
+
+    public void ResetKills(uint pid)
+    {
+        lock (_lock) KillsOf(pid)?.Reset();
+    }
+
+    private KillTracker? KillsOf(uint pid) =>
+        _kills.TryGetValue(pid, out var kills) || _kills.TryGetValue(_lastPid, out kills) ? kills : null;
 
     private ExpTracker? ExpOf(uint pid) =>
         _exp.TryGetValue(pid, out var exp) || _exp.TryGetValue(_lastPid, out exp) ? exp : null;

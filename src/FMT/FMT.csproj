@@ -20,6 +20,7 @@
     <Resource Include="Assets\items.tsv" Condition="Exists('Assets\items.tsv')" />
     <Resource Include="Assets\icons.zip" Condition="Exists('Assets\icons.zip')" />
     <Resource Include="Assets\cards.tsv" Condition="Exists('Assets\cards.tsv')" />
+    <Resource Include="Assets\monsters.tsv" Condition="Exists('Assets\monsters.tsv')" />
     <ProjectReference Include="..\Fmt.Core\Fmt.Core.csproj" />
   </ItemGroup>
 </Project>

@@ -91,6 +91,21 @@ foreach ($line in [IO.File]::ReadLines("$Dev\Emulator\Frostvein\Frostvein.Resour
 }
 [IO.File]::WriteAllLines("$assets\cards.tsv", $cardRows, (New-Object Text.UTF8Encoding($false)))
 "Buffs: $($cardRows.Count)"
+
+$monsterNames = [NosLang]::Read($lang, '_code_de_monster.txt')
+$monsterRows = New-Object System.Collections.Generic.List[string]
+$monster = $null
+foreach ($line in [IO.File]::ReadLines("$Dev\Emulator\Frostvein\Frostvein.Resources\Dat\monster.dat")) {
+    $t = $line.Trim() -split '\s+'
+    if ($t[0] -eq 'VNUM') { $monster = $t[1] }
+    elseif ($t[0] -eq 'NAME' -and $monster -ne $null) {
+        $name = $monsterNames[$t[1]]
+        if ($name) { $monsterRows.Add("$monster`t$name") }
+        $monster = $null
+    }
+}
+[IO.File]::WriteAllLines("$assets\monsters.tsv", $monsterRows, (New-Object Text.UTF8Encoding($false)))
+"Monster: $($monsterRows.Count)"
 $zipPath = "$assets\icons.zip"
 if (Test-Path $zipPath) { Remove-Item $zipPath }
 $zip = [IO.Compression.ZipFile]::Open($zipPath, 'Create')
