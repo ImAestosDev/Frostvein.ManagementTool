@@ -28,6 +28,7 @@ public partial class App : Application
     private DropOverlay? _dropOverlay;
     private SessionOverlay? _sessionOverlay;
     private LandOverlay? _landOverlay;
+    private OverlayBar? _overlayBar;
     private string _namesPath = "";
     private string _sessionsPath = "";
     private string _inventoriesPath = "";
@@ -107,6 +108,7 @@ public partial class App : Application
         _dropOverlay = new DropOverlay(_state, _tracker, _capture);
         _sessionOverlay = new SessionOverlay(_state, _tracker, _capture);
         _landOverlay = new LandOverlay(_state, _tracker, _capture);
+        _overlayBar = new OverlayBar(_state, _tracker, _capture);
         _pill = new PillWindow(_state, _tracker, () => _panel.Toggle());
         _tray = new Tray(() => _panel.Toggle(), () => _panel.ShowPage("settings"), Quit);
         _hotkeys = new HotkeyManager();
@@ -121,6 +123,7 @@ public partial class App : Application
             _dropOverlay.Refresh();
             _sessionOverlay.Refresh();
             _landOverlay.Refresh();
+            _overlayBar.Refresh();
         };
         _state.DataChanged += () => _pill.Refresh();
         _panel.HotkeysChanged += RegisterHotkeys;
@@ -166,6 +169,7 @@ public partial class App : Application
         _dropOverlay?.Refresh();
         _sessionOverlay?.Refresh();
         _landOverlay?.Refresh();
+        _overlayBar?.Refresh();
     }
 
     private void EnableCapture()
@@ -180,6 +184,7 @@ public partial class App : Application
             _dropOverlay!.Refresh();
             _sessionOverlay!.Refresh();
             _landOverlay!.Refresh();
+            _overlayBar!.Refresh();
             return;
         }
         if (RestartElevated()) return;
@@ -198,6 +203,7 @@ public partial class App : Application
         _dropOverlay!.Refresh();
         _sessionOverlay!.Refresh();
         _landOverlay!.Refresh();
+        _overlayBar!.Refresh();
     }
 
     // Reading the network card needs admin rights; false when the user declines.

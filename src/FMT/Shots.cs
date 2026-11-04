@@ -118,6 +118,23 @@ internal static class Shots
         var landPng = new PngBitmapEncoder();
         landPng.Frames.Add(BitmapFrame.Create(landBitmap));
         using (var landFile = File.Create(Path.Combine(outDir, "counter-land.png"))) landPng.Save(landFile);
+        foreach (var edit in new[] { false, true })
+        {
+            state.S.OverlayBarEdit = edit;
+            state.S.ShowDropOverlay = edit;
+            var bar = new OverlayBarCard(state.S, () => { });
+            bar.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            bar.Arrange(new Rect(bar.DesiredSize));
+            bar.UpdateLayout();
+            var barBitmap = new RenderTargetBitmap((int)Math.Ceiling(bar.ActualWidth), (int)Math.Ceiling(bar.ActualHeight), 96, 96, PixelFormats.Pbgra32);
+            barBitmap.Render(bar);
+            var barPng = new PngBitmapEncoder();
+            barPng.Frames.Add(BitmapFrame.Create(barBitmap));
+            using var barFile = File.Create(Path.Combine(outDir, $"counter-bar-{(edit ? "edit" : "normal")}.png"));
+            barPng.Save(barFile);
+        }
+        state.S.OverlayBarEdit = false;
+        state.S.ShowDropOverlay = true;
         Capture(panel, Path.Combine(outDir, "4f-packets.png"), () => panel.ShowPage("packets", false));
         Capture(panel, Path.Combine(outDir, "5-layout.png"), () => panel.ShowPage("layout", false));
         Capture(panel, Path.Combine(outDir, "6-settings.png"), () => panel.ShowPage("settings", false));

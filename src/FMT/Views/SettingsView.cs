@@ -15,6 +15,7 @@ public sealed class SettingsView(AppState state, Action hotkeysChanged, Updater?
         var col = new StackPanel { Margin = new Thickness(14, 12, 12, 16) };
         Ui.AddTo(col, Ui.T("Einstellungen", 18, bold: true), 0);
         Ui.AddTo(col, StartCard(), 10);
+        Ui.AddTo(col, BarCard(), 10);
         Ui.AddTo(col, ColorsCard(), 10);
         Ui.AddTo(col, LookCard(), 10);
         Ui.AddTo(col, PositionCard(), 10);
@@ -61,6 +62,24 @@ public sealed class SettingsView(AppState state, Action hotkeysChanged, Updater?
             PacketCapture.IsAdmin
                 ? null
                 : Ui.T("Liest FMT mit, fragt Windows beim Start nach Admin-Rechten. Aktivierst du den Autostart bei laufendem Mitlesen, entfällt diese Abfrage.", 12, "Muted", wrap: true));
+    }
+
+    private FrameworkElement BarCard()
+    {
+        var s = state.S;
+        var reset = Ui.Btn("Position zurücksetzen", () =>
+        {
+            s.OverlayBarRight = Settings.DefaultBarRight;
+            s.OverlayBarBottom = Settings.DefaultBarBottom;
+            state.TouchSettings();
+        }, "Ghost", Ui.G.Undo);
+        reset.HorizontalAlignment = HorizontalAlignment.Left;
+        return Section("Symbole im Spiel",
+            Ui.Check("Symbole unten rechts anzeigen", s.ShowOverlayBar, v => { s.ShowOverlayBar = v; state.TouchSettings(); }),
+            Ui.Check("Edit Mode: Symbole mit der Maus verschieben", s.OverlayBarEdit, v => { s.OverlayBarEdit = v; state.TouchSettings(); }),
+            Ui.T("Schließ danach das FMT-Fenster, falls es die Symbole verdeckt. Der grüne Haken an den Symbolen beendet den Edit Mode.", 12, "Muted", wrap: true),
+            Slider("Größe der Symbole", 20, 48, s.OverlayBarSize, v => $"{v:0} px", v => s.OverlayBarSize = Math.Round(v)),
+            reset);
     }
 
     private FrameworkElement PositionCard()

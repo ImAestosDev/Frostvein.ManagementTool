@@ -72,23 +72,33 @@ public abstract class GameOverlay : Window
         if (_hwnd == 0 || _dragging || !IsVisible || !_tracker.IsVisible) return;
         var game = _tracker.Rect;
         Native.GetWindowRect(_hwnd, out var own);
-        var (px, py) = Position;
-        var x = game.Left + (int)(Math.Clamp(px, 0, 1) * game.Width);
-        var y = game.Top + (int)(Math.Clamp(py, 0, 1) * game.Height);
+        var (x, y) = Target(game, own);
         x = Math.Clamp(x, game.Left, Math.Max(game.Left, game.Right - own.Width));
         y = Math.Clamp(y, game.Top, Math.Max(game.Top, game.Bottom - own.Height));
         Native.SetWindowPos(_hwnd, 0, x, y, 0, 0, Native.SWP_NOSIZE | Native.SWP_NOZORDER | Native.SWP_NOACTIVATE);
     }
 
+    protected virtual bool CanDrag => true;
+
+    protected virtual (int X, int Y) Target(RECT game, RECT own)
+    {
+        var (px, py) = Position;
+        return (game.Left + (int)(Math.Clamp(px, 0, 1) * game.Width), game.Top + (int)(Math.Clamp(py, 0, 1) * game.Height));
+    }
+
+    protected virtual void Dropped(RECT game, RECT own) =>
+        Position = ((double)(own.Left - game.Left) / game.Width, (double)(own.Top - game.Top) / game.Height);
+
     private void OnPress(object sender, MouseButtonEventArgs e)
     {
+        if (!CanDrag) return;
         _dragging = true;
         DragMove();
         _dragging = false;
         Native.GetWindowRect(_hwnd, out var after);
         var game = _tracker.Rect;
         if (game.Width <= 0 || game.Height <= 0) return;
-        Position = ((double)(after.Left - game.Left) / game.Width, (double)(after.Top - game.Top) / game.Height);
+        Dropped(game, after);
         State.Touch();
     }
 }

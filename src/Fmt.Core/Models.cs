@@ -125,6 +125,17 @@ public sealed class Settings
     public bool ShowSessionOverlay { get; set; } = true;
     public double SessionOverlayX { get; set; } = 0.35;
     public double SessionOverlayY { get; set; } = 0.12;
+    // Measured: the game's buttons are 30 px with a 2 px gap; the bar continues left of the shop button.
+    public const double DefaultBarRight = 65, DefaultBarBottom = 8;
+
+    public bool ShowOverlayBar { get; set; } = true;
+    public double OverlayBarRight { get; set; } = DefaultBarRight;
+    public double OverlayBarBottom { get; set; } = DefaultBarBottom;
+    public double OverlayBarSize { get; set; } = 30;
+
+    [JsonIgnore]
+    public bool OverlayBarEdit { get; set; }
+
     public bool ShowLandOverlay { get; set; } = true;
     public bool LandOverlayOnlyInLand { get; set; }
     public double LandOverlayX { get; set; } = 0.7;
