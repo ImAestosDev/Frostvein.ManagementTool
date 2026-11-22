@@ -9,6 +9,7 @@ public static class CursorSwap
 {
     public const string Folder = "fmt-cursors";
     public const string PackName = "Moga Dark";
+    public const string PackUrl = "https://ko-fi.com/moyash";
 
     // Game cursor (hash of its pixels, as the d3d9.dll names it under fmt-cursors\game) -> Windows cursor role.
     private static readonly Dictionary<uint, string> GameCursors = new()

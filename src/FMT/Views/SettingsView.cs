@@ -183,8 +183,12 @@ public sealed class SettingsView(AppState state, Action hotkeysChanged, Updater?
 
         var check = Ui.Check($"{CursorSwap.PackName} als Maus-Cursor im Spiel", on, Set);
         check.IsEnabled = folder != null;
+        // Moga may not be shipped with FMT; this sends people to its creator, where it is free.
+        var download = Ui.Btn("Moga Dark von MOYASH laden", () =>
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(CursorSwap.PackUrl) { UseShellExecute = true }), "Ghost");
         return Section("Maus-Cursor",
             check,
+            CursorSwap.FindPack(s.CursorPack) == null ? download : null,
             Ui.Cols("Auto,*", Ui.T("Status: ", 12, "Muted"),
                 folder == null ? Ui.T("Spielordner nicht gefunden (siehe Grafik)", 12, "Negative", bold: true)
                 : on ? Ui.T($"An: {CursorSwap.PackName}", 12, "Positive", bold: true)
