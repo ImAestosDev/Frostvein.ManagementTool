@@ -140,6 +140,10 @@ public sealed class Settings
     public bool LandOverlayOnlyInLand { get; set; }
     public double LandOverlayX { get; set; } = 0.7;
     public double LandOverlayY { get; set; } = 0.5;
+    public bool ShowFpsOverlay { get; set; }
+    public string? GameFolder { get; set; }
+    public double FpsOverlayX { get; set; } = 0.01;
+    public double FpsOverlayY { get; set; } = 0.02;
     public LandOfLifeSettings LandOfLife { get; set; } = new();
     public double PillX { get; set; } = DefaultPillX;
     public double PillY { get; set; } = DefaultPillY;

@@ -14,6 +14,7 @@ public sealed class OverlayBarCard : Border
         new(Ui.G.Drops, "Drops", "#F0D264", s => s.ShowDropOverlay, (s, v) => s.ShowDropOverlay = v),
         new(Ui.G.Exp, "EXP", "#5CC28F", s => s.ShowExpOverlay, (s, v) => s.ShowExpOverlay = v),
         new(Ui.G.Damage, "Damage", "#E5787C", s => s.ShowDamageOverlay, (s, v) => s.ShowDamageOverlay = v),
+        new(Ui.G.Fps, "FPS", "#E6EEF5", s => s.ShowFpsOverlay, (s, v) => s.ShowFpsOverlay = v),
     ];
 
     private readonly Settings _settings;

@@ -61,7 +61,7 @@ public abstract class GameOverlay : Window
 
     public void Refresh()
     {
-        var wanted = Capture.IsRunning && Enabled && _tracker.ShowOverlay;
+        var wanted = (!NeedsCapture || Capture.IsRunning) && Enabled && _tracker.ShowOverlay;
         if (wanted && !IsVisible) Show();
         else if (!wanted && IsVisible) Hide();
         Place();
@@ -79,6 +79,7 @@ public abstract class GameOverlay : Window
     }
 
     protected virtual bool CanDrag => true;
+    protected virtual bool NeedsCapture => true;
 
     protected virtual (int X, int Y) Target(RECT game, RECT own)
     {

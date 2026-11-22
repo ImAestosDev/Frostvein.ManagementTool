@@ -118,6 +118,19 @@ internal static class Shots
         var landPng = new PngBitmapEncoder();
         landPng.Frames.Add(BitmapFrame.Create(landBitmap));
         using (var landFile = File.Create(Path.Combine(outDir, "counter-land.png"))) landPng.Save(landFile);
+        // Made up frame times with a few spikes, like a busy map.
+        var rnd = new Random(7);
+        var times = Enumerable.Range(0, 120).Select(i => i % 37 == 0 ? 31 + rnd.NextDouble() * 6 : 8 + rnd.NextDouble() * 2).ToArray();
+        var fpsCard = new FpsCard();
+        fpsCard.Show(new FrameStats(112, times.Average(), 31, times.Max(), "D3D9", times), [(2, new FrameStats(58, 17, 40, 25, "D3D9", [17, 17])), (3, FrameStats.None)]);
+        fpsCard.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        fpsCard.Arrange(new Rect(fpsCard.DesiredSize));
+        fpsCard.UpdateLayout();
+        var fpsBitmap = new RenderTargetBitmap((int)Math.Ceiling(fpsCard.ActualWidth), (int)Math.Ceiling(fpsCard.ActualHeight), 96, 96, PixelFormats.Pbgra32);
+        fpsBitmap.Render(fpsCard);
+        var fpsPng = new PngBitmapEncoder();
+        fpsPng.Frames.Add(BitmapFrame.Create(fpsBitmap));
+        using (var fpsFile = File.Create(Path.Combine(outDir, "counter-fps.png"))) fpsPng.Save(fpsFile);
         foreach (var edit in new[] { false, true })
         {
             state.S.OverlayBarEdit = edit;

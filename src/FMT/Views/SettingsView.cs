@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO;
+using System.Net.Http;
 using System.Windows.Controls.Primitives;
 
 namespace Fmt.App;
@@ -16,6 +17,7 @@ public sealed class SettingsView(AppState state, Action hotkeysChanged, Updater?
         Ui.AddTo(col, Ui.T("Einstellungen", 18, bold: true), 0);
         Ui.AddTo(col, StartCard(), 10);
         Ui.AddTo(col, BarCard(), 10);
+        Ui.AddTo(col, GraphicsCard(), 10);
         Ui.AddTo(col, ColorsCard(), 10);
         Ui.AddTo(col, LookCard(), 10);
         Ui.AddTo(col, PositionCard(), 10);
@@ -64,6 +66,77 @@ public sealed class SettingsView(AppState state, Action hotkeysChanged, Updater?
                 : Ui.T("Liest FMT mit, fragt Windows beim Start nach Admin-Rechten. Aktivierst du den Autostart bei laufendem Mitlesen, entfällt diese Abfrage.", 12, "Muted", wrap: true));
     }
 
+    private bool _dxvkBusy;
+
+    private FrameworkElement GraphicsCard()
+    {
+        var s = state.S;
+        var folder = Dxvk.FindFolder(s.GameFolder);
+        if (folder != null && folder != s.GameFolder)
+        {
+            s.GameFolder = folder;
+            state.Touch();
+        }
+        var dxvk = Dxvk.State(folder);
+        var (status, brush) = dxvk switch
+        {
+            DxvkState.On => ($"An (DXVK {Dxvk.Version})", "Positive"),
+            DxvkState.Off => ("Aus (DirectX 9)", "Muted"),
+            DxvkState.Foreign => ("Fremde d3d9.dll im Spielordner (wird beim Einschalten gesichert)", "Accent"),
+            _ => ("Spielordner nicht gefunden", "Negative"),
+        };
+
+        var pick = Ui.Btn("Ordner wählen", () =>
+        {
+            var dialog = new Microsoft.Win32.OpenFolderDialog { Title = $"Ordner mit {Dxvk.ClientExe} wählen" };
+            if (dialog.ShowDialog() != true) return;
+            if (!Dxvk.IsClientFolder(dialog.FolderName))
+            {
+                state.Notify($"In diesem Ordner liegt keine {Dxvk.ClientExe}.");
+                return;
+            }
+            s.GameFolder = dialog.FolderName;
+            state.Touch();
+            Refresh();
+        }, "Ghost", Ui.G.Folder);
+
+        Button? toggle = null;
+        if (dxvk != DxvkState.NoFolder)
+        {
+            var on = dxvk == DxvkState.On;
+            toggle = Ui.Btn(_dxvkBusy ? "Lädt …" : on ? "Ausschalten" : "Einschalten", async () =>
+            {
+                if (_dxvkBusy) return;
+                _dxvkBusy = true;
+                Refresh();
+                try
+                {
+                    if (on) Dxvk.Disable(folder!);
+                    else await Dxvk.Enable(folder!);
+                    state.Notify(on ? "DXVK ist aus. Gilt ab dem nächsten Spielstart." : "DXVK ist an. Gilt ab dem nächsten Spielstart.");
+                }
+                catch (Exception e) when (e is IOException or UnauthorizedAccessException or HttpRequestException or TaskCanceledException or InvalidDataException)
+                {
+                    state.Notify($"DXVK: {e.Message}");
+                }
+                finally
+                {
+                    _dxvkBusy = false;
+                    Refresh();
+                }
+            }, on ? null : "Primary");
+            toggle.IsEnabled = !_dxvkBusy;
+        }
+        var buttons = Ui.Row(8, toggle, pick);
+
+        return Section("Grafik: DXVK (Vulkan)",
+            Ui.T("Lässt NosTale über Vulkan statt DirectX 9 zeichnen. Das entlastet die CPU, bei uns gemessen: 121 → 155–170 FPS, 1%-Low 87 → 107.", 12, "Muted", wrap: true),
+            Ui.Cols("Auto,*", Ui.T("Status: ", 12, "Muted"), Ui.T(status, 12, brush, bold: true, wrap: true)),
+            Ui.T(folder ?? "Starte NosTale oder wähle den Ordner mit NostaleClientX.exe.", 12, "Muted", wrap: true),
+            buttons,
+            Ui.T($"Gilt ab dem nächsten Spielstart. FMT lädt DXVK {Dxvk.Version} von GitHub (doitsujin/dxvk) und prüft die Datei. Braucht eine Grafikkarte mit Vulkan 1.3. Bleibt das Bild schwarz oder stürzt das Spiel ab, hier wieder ausschalten. Inoffiziell: Gameforge unterstützt das nicht, manche Virenscanner melden DXVK fälschlich.", 12, "Muted", wrap: true));
+    }
+
     private FrameworkElement BarCard()
     {
         var s = state.S;
@@ -79,7 +152,9 @@ public sealed class SettingsView(AppState state, Action hotkeysChanged, Updater?
             Ui.Check("Edit Mode: Symbole mit der Maus verschieben", s.OverlayBarEdit, v => { s.OverlayBarEdit = v; state.TouchSettings(); }),
             Ui.T("Schließ danach das FMT-Fenster, falls es die Symbole verdeckt. Der grüne Haken an den Symbolen beendet den Edit Mode.", 12, "Muted", wrap: true),
             Slider("Größe der Symbole", 20, 48, s.OverlayBarSize, v => $"{v:0} px", v => s.OverlayBarSize = Math.Round(v)),
-            reset);
+            reset,
+            Ui.Check("FPS-Anzeige über dem Spiel", s.ShowFpsOverlay, v => { s.ShowFpsOverlay = v; state.TouchSettings(); }),
+            Ui.T("Liest die Bildrate über Windows mit (braucht Admin-Rechte wie das Mitlesen), lädt nichts ins Spiel.", 12, "Muted", wrap: true));
     }
 
     private FrameworkElement PositionCard()

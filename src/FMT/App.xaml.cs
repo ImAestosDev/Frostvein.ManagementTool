@@ -28,6 +28,8 @@ public partial class App : Application
     private DropOverlay? _dropOverlay;
     private SessionOverlay? _sessionOverlay;
     private LandOverlay? _landOverlay;
+    private FpsOverlay? _fpsOverlay;
+    private readonly FrameCounter _frames = new();
     private OverlayBar? _overlayBar;
     private string _namesPath = "";
     private string _sessionsPath = "";
@@ -109,6 +111,7 @@ public partial class App : Application
         _sessionOverlay = new SessionOverlay(_state, _tracker, _capture);
         _landOverlay = new LandOverlay(_state, _tracker, _capture);
         _overlayBar = new OverlayBar(_state, _tracker, _capture);
+        _fpsOverlay = new FpsOverlay(_state, _tracker, _capture, _frames);
         _pill = new PillWindow(_state, _tracker, () => _panel.Toggle());
         _tray = new Tray(() => _panel.Toggle(), () => _panel.ShowPage("settings"), Quit);
         _hotkeys = new HotkeyManager();
@@ -124,6 +127,7 @@ public partial class App : Application
             _sessionOverlay.Refresh();
             _landOverlay.Refresh();
             _overlayBar.Refresh();
+            StartFrames();
         };
         _state.DataChanged += () => _pill.Refresh();
         _panel.HotkeysChanged += RegisterHotkeys;
@@ -144,6 +148,8 @@ public partial class App : Application
             if (PacketCapture.IsAdmin) _capture.Start();
             else if (RestartElevated()) return;
         }
+
+        StartFrames();
 
         if (store.LoadWarning != null) _panel.ShowAndNotify(store.LoadWarning);
         if (args.Contains(OpenArgument) || (_tracker.Target == 0 && waitIndex < 0 && !args.Contains(AutostartArgument))) _panel.Open();
@@ -170,6 +176,14 @@ public partial class App : Application
         _sessionOverlay?.Refresh();
         _landOverlay?.Refresh();
         _overlayBar?.Refresh();
+        _fpsOverlay?.Refresh();
+    }
+
+    // Present events need admin rights, same as reading the network card.
+    private void StartFrames()
+    {
+        if (_state!.S.ShowFpsOverlay && !_frames.IsRunning && PacketCapture.IsAdmin && !_frames.Start()) _state.Notify(_frames.Error!);
+        _fpsOverlay?.Refresh();
     }
 
     private void EnableCapture()
@@ -260,6 +274,7 @@ public partial class App : Application
         _capture?.SaveSessions(_sessionsPath, endRunning: true);
         _capture?.SaveInventories(_inventoriesPath);
         _capture?.Dispose();
+        _frames.Dispose();
         _hotkeys?.Dispose();
         _tracker?.Dispose();
         _tray?.Dispose();
