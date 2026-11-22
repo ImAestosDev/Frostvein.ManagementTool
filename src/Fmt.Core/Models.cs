@@ -125,8 +125,8 @@ public sealed class Settings
     public bool ShowSessionOverlay { get; set; } = true;
     public double SessionOverlayX { get; set; } = 0.35;
     public double SessionOverlayY { get; set; } = 0.12;
-    // Measured: the game's buttons are 30 px with a 2 px gap; the bar continues left of the shop button.
-    public const double DefaultBarRight = 65, DefaultBarBottom = 8;
+    // Left of the open inventory (350 px wide at the right edge), so the game's window never covers the bar.
+    public const double DefaultBarRight = 360, DefaultBarBottom = 4;
 
     public bool ShowOverlayBar { get; set; } = true;
     public double OverlayBarRight { get; set; } = DefaultBarRight;
