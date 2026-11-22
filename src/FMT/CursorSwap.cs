@@ -1,4 +1,5 @@
 using System.IO;
+using System.IO.Compression;
 
 namespace Fmt.App;
 
@@ -45,24 +46,61 @@ public static class CursorSwap
 
     public static bool IsPack(string? folder) => !string.IsNullOrEmpty(folder) && Directory.Exists(folder) && ReadPack(folder).ContainsKey("pointer");
 
-    // Looks for an unpacked Moga Dark in the usual places, e.g. Desktop\Moga-Windows-Free\Moga-Dark.
-    public static string? FindPack(string? remembered)
+    // FMT keeps its own copy, so the downloaded folder or zip can be deleted afterwards.
+    public static string Stored => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Frostvein", "FMT", "cursors", "Moga-Dark");
+
+    private static IEnumerable<string> Roots() =>
+        new[] { Environment.SpecialFolder.Desktop, Environment.SpecialFolder.MyDocuments }.Select(Environment.GetFolderPath)
+            .Append(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads"))
+            .Where(Directory.Exists);
+
+    // FMT's copy, else Moga Dark found as a folder or the downloaded zip on Desktop, Downloads or Documents.
+    public static string? FindPack()
     {
-        if (IsPack(remembered)) return remembered;
-        foreach (var root in new[] { Environment.SpecialFolder.Desktop, Environment.SpecialFolder.MyDocuments }.Select(Environment.GetFolderPath)
-            .Append(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads")))
+        if (IsPack(Stored)) return Stored;
+        foreach (var root in Roots())
         {
-            if (!Directory.Exists(root)) continue;
             try
             {
                 foreach (var dir in Directory.EnumerateDirectories(root, "Moga*").SelectMany(d => Directory.EnumerateDirectories(d, "Moga-Dark*").Prepend(d)))
-                    if (dir.Contains("Dark", StringComparison.OrdinalIgnoreCase) && IsPack(dir)) return dir;
+                    if (dir.Contains("Dark", StringComparison.OrdinalIgnoreCase) && IsPack(dir) && Import(dir)) return Stored;
+                foreach (var zip in Directory.EnumerateFiles(root, "Moga*.zip"))
+                    if (Import(zip)) return Stored;
             }
-            catch (Exception e) when (e is IOException or UnauthorizedAccessException) { }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidDataException) { }
         }
         return null;
     }
 
+    // Copies the cursors from a pack folder, one of its .cur files, or the zip into FMT's own folder.
+    public static bool Import(string source)
+    {
+        var names = Files.Select(f => f.File + ".cur").ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var temp = Stored + ".new";
+        if (Directory.Exists(temp)) Directory.Delete(temp, true);
+        Directory.CreateDirectory(temp);
+        if (source.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+        {
+            using var zip = ZipFile.OpenRead(source);
+            foreach (var entry in zip.Entries)
+                if (names.Contains(entry.Name) && entry.FullName.Contains("Dark", StringComparison.OrdinalIgnoreCase))
+                    entry.ExtractToFile(Path.Combine(temp, entry.Name), overwrite: true);
+        }
+        else
+        {
+            var folder = File.Exists(source) ? Path.GetDirectoryName(source)! : source;
+            foreach (var name in names)
+                if (File.Exists(Path.Combine(folder, name))) File.Copy(Path.Combine(folder, name), Path.Combine(temp, name));
+        }
+        if (!IsPack(temp))
+        {
+            Directory.Delete(temp, true);
+            return false;
+        }
+        if (Directory.Exists(Stored)) Directory.Delete(Stored, true);
+        Directory.Move(temp, Stored);
+        return true;
+    }
     public static bool IsOn(string? gameFolder) => gameFolder != null && File.Exists(Path.Combine(gameFolder, Folder, "on"));
 
     // Copies the pack's cursors next to the game; null switches back to NosTale's own.

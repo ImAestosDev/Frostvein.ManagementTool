@@ -142,9 +142,6 @@ public sealed class Settings
     public double LandOverlayY { get; set; } = 0.5;
     public bool ShowFpsOverlay { get; set; }
     public string? GameFolder { get; set; }
-
-    // Folder of a Windows cursor pack used in the game, null = the game's own cursors.
-    public string? CursorPack { get; set; }
     public double FpsOverlayX { get; set; } = 0.01;
     public double FpsOverlayY { get; set; } = 0.02;
     public LandOfLifeSettings LandOfLife { get; set; } = new();

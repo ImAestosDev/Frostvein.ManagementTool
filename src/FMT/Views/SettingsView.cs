@@ -112,7 +112,7 @@ public sealed class SettingsView(AppState state, Action hotkeysChanged, Updater?
                 Refresh();
                 try
                 {
-                    if (on) Dxvk.Disable(folder!, keepShim: CursorSwap.IsPack(s.CursorPack));
+                    if (on) Dxvk.Disable(folder!, keepShim: CursorSwap.IsOn(folder));
                     else await Dxvk.Enable(folder!);
                     state.Notify(on ? "DXVK ist aus. Gilt ab dem nächsten Spielstart." : "DXVK ist an. Gilt ab dem nächsten Spielstart.");
                 }
@@ -150,16 +150,17 @@ public sealed class SettingsView(AppState state, Action hotkeysChanged, Updater?
             string? pack = null;
             if (enable)
             {
-                pack = CursorSwap.FindPack(s.CursorPack);
+                pack = CursorSwap.FindPack();
                 if (pack == null)
                 {
-                    // Not unpacked in the usual places: the user points at one of its .cur files.
-                    var dialog = new Microsoft.Win32.OpenFileDialog { Title = "Eine .cur-Datei aus Moga Dark wählen", Filter = "Moga Dark (*.cur)|*.cur" };
+                    // Not in the usual places: the user points at the downloaded zip or one of its .cur files.
+                    var dialog = new Microsoft.Win32.OpenFileDialog { Title = "Moga Dark wählen (ZIP oder eine .cur-Datei)", Filter = "Moga Dark (*.zip;*.cur)|*.zip;*.cur" };
                     if (dialog.ShowDialog() != true) { Refresh(); return; }
-                    pack = Path.GetDirectoryName(dialog.FileName);
-                    if (!CursorSwap.IsPack(pack))
+                    try { pack = CursorSwap.Import(dialog.FileName) ? CursorSwap.Stored : null; }
+                    catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidDataException) { pack = null; }
+                    if (pack == null)
                     {
-                        state.Notify("In diesem Ordner liegt kein Moga Dark (Normal Select.cur fehlt).");
+                        state.Notify("Darin ist kein Moga Dark (Normal Select.cur fehlt).");
                         Refresh();
                         return;
                     }
@@ -170,7 +171,6 @@ public sealed class SettingsView(AppState state, Action hotkeysChanged, Updater?
                 if (enable) Dxvk.InstallShim(folder);
                 else if (Dxvk.State(folder) != DxvkState.On) Dxvk.RemoveShim(folder);
                 CursorSwap.Apply(folder, pack);
-                if (pack != null) s.CursorPack = pack;
                 state.Touch();
                 state.Notify(enable ? "Moga Dark ist an. Gilt ab dem nächsten Spielstart." : "Standard-Cursor von NosTale. Gilt ab dem nächsten Spielstart.");
             }
@@ -183,17 +183,19 @@ public sealed class SettingsView(AppState state, Action hotkeysChanged, Updater?
 
         var check = Ui.Check($"{CursorSwap.PackName} als Maus-Cursor im Spiel", on, Set);
         check.IsEnabled = folder != null;
-        // Moga may not be shipped with FMT; this sends people to its creator, where it is free.
-        var download = Ui.Btn("Moga Dark von MOYASH laden", () =>
-            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(CursorSwap.PackUrl) { UseShellExecute = true }), "Ghost");
+        // Moga may not be shipped with FMT; this sends people to its creator, where it is free. Shoutout included.
+        var have = CursorSwap.FindPack() != null;
+        var creator = Ui.Btn(have ? "MOYASH auf ko-fi unterstützen" : "Moga Dark von MOYASH laden", () =>
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(CursorSwap.PackUrl) { UseShellExecute = true }), have ? "Ghost" : "Primary");
         return Section("Maus-Cursor",
             check,
-            CursorSwap.FindPack(s.CursorPack) == null ? download : null,
+            Ui.T("Moga Dark ist von MOYASH, großer Dank für die geilen Cursor! ♥", 12, "Accent", wrap: true),
+            creator,
             Ui.Cols("Auto,*", Ui.T("Status: ", 12, "Muted"),
                 folder == null ? Ui.T("Spielordner nicht gefunden (siehe Grafik)", 12, "Negative", bold: true)
                 : on ? Ui.T($"An: {CursorSwap.PackName}", 12, "Positive", bold: true)
                 : Ui.T("Aus: Standard NosTale", 12, "Muted", bold: true)),
-            Ui.T("Gilt ab dem nächsten Spielstart. FMT legt dafür eine eigene d3d9.dll in den Spielordner, die Spiel-Exe bleibt unverändert. Moga Dark ist von MOYASH und darf nicht mitgeliefert werden: einmal kostenlos von ko-fi.com/moyash laden und entpacken, FMT findet es auf dem Desktop, in Downloads oder Dokumente.", 12, "Muted", wrap: true));
+            Ui.T("Gilt ab dem nächsten Spielstart. FMT legt dafür eine eigene d3d9.dll in den Spielordner, die Spiel-Exe bleibt unverändert. Moga darf nicht mitgeliefert werden: einmal kostenlos bei MOYASH laden, die ZIP auf Desktop, Downloads oder Dokumente lassen und den Haken setzen. FMT übernimmt die Cursor in seinen eigenen Ordner, danach kann die ZIP weg.", 12, "Muted", wrap: true));
     }
 
     private FrameworkElement BarCard()
