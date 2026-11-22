@@ -18,6 +18,7 @@ public sealed class SettingsView(AppState state, Action hotkeysChanged, Updater?
         Ui.AddTo(col, StartCard(), 10);
         Ui.AddTo(col, BarCard(), 10);
         Ui.AddTo(col, GraphicsCard(), 10);
+        Ui.AddTo(col, CursorCard(), 10);
         Ui.AddTo(col, ColorsCard(), 10);
         Ui.AddTo(col, LookCard(), 10);
         Ui.AddTo(col, PositionCard(), 10);
@@ -111,7 +112,7 @@ public sealed class SettingsView(AppState state, Action hotkeysChanged, Updater?
                 Refresh();
                 try
                 {
-                    if (on) Dxvk.Disable(folder!);
+                    if (on) Dxvk.Disable(folder!, keepShim: CursorSwap.IsPack(s.CursorPack));
                     else await Dxvk.Enable(folder!);
                     state.Notify(on ? "DXVK ist aus. Gilt ab dem nächsten Spielstart." : "DXVK ist an. Gilt ab dem nächsten Spielstart.");
                 }
@@ -135,6 +136,60 @@ public sealed class SettingsView(AppState state, Action hotkeysChanged, Updater?
             Ui.T(folder ?? "Starte NosTale oder wähle den Ordner mit NostaleClientX.exe.", 12, "Muted", wrap: true),
             buttons,
             Ui.T($"Gilt ab dem nächsten Spielstart. FMT lädt DXVK {Dxvk.Version} von GitHub (doitsujin/dxvk) und prüft die Datei. Braucht eine Grafikkarte mit Vulkan 1.3. Bleibt das Bild schwarz oder stürzt das Spiel ab, hier wieder ausschalten. Inoffiziell: Gameforge unterstützt das nicht, manche Virenscanner melden DXVK fälschlich.", 12, "Muted", wrap: true));
+    }
+
+    private FrameworkElement CursorCard()
+    {
+        var s = state.S;
+        var folder = Dxvk.FindFolder(s.GameFolder);
+        var on = CursorSwap.IsOn(folder);
+
+        void Set(bool enable)
+        {
+            if (folder == null) return;
+            string? pack = null;
+            if (enable)
+            {
+                pack = CursorSwap.FindPack(s.CursorPack);
+                if (pack == null)
+                {
+                    // Not unpacked in the usual places: the user points at one of its .cur files.
+                    var dialog = new Microsoft.Win32.OpenFileDialog { Title = "Eine .cur-Datei aus Moga Dark wählen", Filter = "Moga Dark (*.cur)|*.cur" };
+                    if (dialog.ShowDialog() != true) { Refresh(); return; }
+                    pack = Path.GetDirectoryName(dialog.FileName);
+                    if (!CursorSwap.IsPack(pack))
+                    {
+                        state.Notify("In diesem Ordner liegt kein Moga Dark (Normal Select.cur fehlt).");
+                        Refresh();
+                        return;
+                    }
+                }
+            }
+            try
+            {
+                if (enable) Dxvk.InstallShim(folder);
+                else if (Dxvk.State(folder) != DxvkState.On) Dxvk.RemoveShim(folder);
+                CursorSwap.Apply(folder, pack);
+                if (pack != null) s.CursorPack = pack;
+                state.Touch();
+                state.Notify(enable ? "Moga Dark ist an. Gilt ab dem nächsten Spielstart." : "Standard-Cursor von NosTale. Gilt ab dem nächsten Spielstart.");
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException or InvalidDataException)
+            {
+                state.Notify($"Cursor: {e.Message}");
+            }
+            Refresh();
+        }
+
+        var check = Ui.Check($"{CursorSwap.PackName} als Maus-Cursor im Spiel", on, Set);
+        check.IsEnabled = folder != null;
+        return Section("Maus-Cursor",
+            check,
+            Ui.Cols("Auto,*", Ui.T("Status: ", 12, "Muted"),
+                folder == null ? Ui.T("Spielordner nicht gefunden (siehe Grafik)", 12, "Negative", bold: true)
+                : on ? Ui.T($"An: {CursorSwap.PackName}", 12, "Positive", bold: true)
+                : Ui.T("Aus: Standard NosTale", 12, "Muted", bold: true)),
+            Ui.T("Gilt ab dem nächsten Spielstart. FMT legt dafür eine eigene d3d9.dll in den Spielordner, die Spiel-Exe bleibt unverändert. Moga Dark ist von MOYASH und darf nicht mitgeliefert werden: einmal kostenlos von ko-fi.com/moyash laden und entpacken, FMT findet es auf dem Desktop, in Downloads oder Dokumente.", 12, "Muted", wrap: true));
     }
 
     private FrameworkElement BarCard()

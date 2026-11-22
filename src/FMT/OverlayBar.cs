@@ -22,7 +22,11 @@ public sealed class OverlayBarCard : Border
     private readonly StackPanel _row = new() { Orientation = Orientation.Horizontal };
     private readonly List<(Entry Entry, Border Slot, TextBlock Glyph)> _slots = [];
     private readonly Border _done;
+    private readonly Border _handle;
     private double _builtSize;
+
+    // Set while the blue handle is pressed, so only it starts a drag outside Edit Mode.
+    public bool HandlePressed { get; set; }
 
     public OverlayBarCard(Settings settings, Action changed)
     {
@@ -39,6 +43,19 @@ public sealed class OverlayBarCard : Border
             _settings.OverlayBarEdit = false;
             _changed();
         };
+        // Same blue square the game puts next to its skill bars.
+        _handle = new Border
+        {
+            BorderThickness = new Thickness(1),
+            BorderBrush = Ui.Hex("#D8ECFF"),
+            Background = new LinearGradientBrush(Ui.ColorOf("#7FC3FF"), Ui.ColorOf("#1E6FD0"), 90),
+            CornerRadius = new CornerRadius(2),
+            VerticalAlignment = VerticalAlignment.Top,
+            Cursor = Cursors.SizeAll,
+            SnapsToDevicePixels = true,
+            ToolTip = "Ziehen zum Verschieben",
+        };
+        _handle.PreviewMouseLeftButtonDown += (_, _) => HandlePressed = true;
         Child = _row;
         Update();
     }
@@ -75,6 +92,8 @@ public sealed class OverlayBarCard : Border
             Add(slot, size);
             _slots.Add((entry, slot, glyph));
         }
+        _handle.Width = _handle.Height = Math.Round(size * 0.45);
+        Ui.AddTo(_row, _handle, Gap + 1);
     }
 
     private void Add(Border slot, double size)
@@ -118,7 +137,15 @@ public sealed class OverlayBar : GameOverlay
     }
 
     protected override bool Enabled => State.S.ShowOverlayBar;
-    protected override bool CanDrag => State.S.OverlayBarEdit;
+    protected override bool CanDrag
+    {
+        get
+        {
+            var handle = _card.HandlePressed;
+            _card.HandlePressed = false;
+            return handle || State.S.OverlayBarEdit;
+        }
+    }
 
     // Unused: the bar keeps pixel distances to the corner, the game's buttons do not scale.
     protected override (double X, double Y) Position { get; set; }

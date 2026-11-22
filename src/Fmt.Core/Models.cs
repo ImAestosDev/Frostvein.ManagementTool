@@ -125,13 +125,13 @@ public sealed class Settings
     public bool ShowSessionOverlay { get; set; } = true;
     public double SessionOverlayX { get; set; } = 0.35;
     public double SessionOverlayY { get; set; } = 0.12;
-    // Left of the open inventory (350 px wide at the right edge), so the game's window never covers the bar.
-    public const double DefaultBarRight = 360, DefaultBarBottom = 4;
+    // Right of the game's skill bar, measured on Adrian's client; the blue handle moves it anywhere.
+    public const double DefaultBarRight = 819, DefaultBarBottom = 4, DefaultBarSize = 34;
 
     public bool ShowOverlayBar { get; set; } = true;
     public double OverlayBarRight { get; set; } = DefaultBarRight;
     public double OverlayBarBottom { get; set; } = DefaultBarBottom;
-    public double OverlayBarSize { get; set; } = 30;
+    public double OverlayBarSize { get; set; } = DefaultBarSize;
 
     [JsonIgnore]
     public bool OverlayBarEdit { get; set; }
@@ -142,6 +142,9 @@ public sealed class Settings
     public double LandOverlayY { get; set; } = 0.5;
     public bool ShowFpsOverlay { get; set; }
     public string? GameFolder { get; set; }
+
+    // Folder of a Windows cursor pack used in the game, null = the game's own cursors.
+    public string? CursorPack { get; set; }
     public double FpsOverlayX { get; set; } = 0.01;
     public double FpsOverlayY { get; set; } = 0.02;
     public LandOfLifeSettings LandOfLife { get; set; } = new();

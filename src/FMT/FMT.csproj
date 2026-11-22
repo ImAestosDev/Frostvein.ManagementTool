@@ -10,7 +10,7 @@
     <RootNamespace>Fmt.App</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\fmt.ico</ApplicationIcon>
-    <Version>1.0.12</Version>
+    <Version>1.0.13</Version>
   </PropertyGroup>
   <ItemGroup>
     <Using Remove="System.Windows.Forms" />
@@ -21,6 +21,7 @@
     <Resource Include="Assets\icons.zip" Condition="Exists('Assets\icons.zip')" />
     <Resource Include="Assets\cards.tsv" Condition="Exists('Assets\cards.tsv')" />
     <Resource Include="Assets\monsters.tsv" Condition="Exists('Assets\monsters.tsv')" />
+    <EmbeddedResource Include="Assets\fmt_cursor.dll" LogicalName="fmt_cursor.dll" />
     <ProjectReference Include="..\Fmt.Core\Fmt.Core.csproj" />
   </ItemGroup>
 </Project>

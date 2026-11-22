@@ -1,0 +1,13 @@
+LIBRARY d3d9
+EXPORTS
+    Direct3DCreate9 = FmtDirect3DCreate9
+    Direct3DCreate9Ex = FmtDirect3DCreate9Ex
+    D3DPERF_BeginEvent = FmtD3DPERF_BeginEvent
+    D3DPERF_EndEvent = FmtD3DPERF_EndEvent
+    D3DPERF_GetStatus = FmtD3DPERF_GetStatus
+    D3DPERF_QueryRepeatFrame = FmtD3DPERF_QueryRepeatFrame
+    D3DPERF_SetMarker = FmtD3DPERF_SetMarker
+    D3DPERF_SetOptions = FmtD3DPERF_SetOptions
+    D3DPERF_SetRegion = FmtD3DPERF_SetRegion
+    Direct3DShaderValidatorCreate9 = FmtDirect3DShaderValidatorCreate9
+    FmtMarker DATA

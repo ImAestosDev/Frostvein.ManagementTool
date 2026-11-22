@@ -7,7 +7,7 @@ namespace Fmt.Core;
 // JSON file with atomic, flushed writes and daily backups, so a BSOD cannot eat the data.
 public sealed class Store
 {
-    public const int CurrentVersion = 7;
+    public const int CurrentVersion = 8;
     private const int UndoLimit = 30;
     private const int BackupsKept = 30;
 
@@ -77,12 +77,13 @@ public sealed class Store
             }
         }
         if (data.Version < 6) ConvertNosTaler(data);
-        // A bar never moved by hand goes next to the inventory.
-        if ((s.OverlayBarRight, s.OverlayBarBottom) is (65, 8))
+        // A bar never moved by hand follows the new default next to the skill bar.
+        if ((s.OverlayBarRight, s.OverlayBarBottom) is (65, 8) or (360, 4))
         {
             s.OverlayBarRight = Settings.DefaultBarRight;
             s.OverlayBarBottom = Settings.DefaultBarBottom;
         }
+        if (s.OverlayBarSize == 30) s.OverlayBarSize = Settings.DefaultBarSize;
         data.Version = CurrentVersion;
     }
 
