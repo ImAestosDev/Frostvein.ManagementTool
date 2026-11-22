@@ -185,7 +185,7 @@ public sealed class SettingsView(AppState state, Action hotkeysChanged, Updater?
         check.IsEnabled = folder != null;
         // Moga may not be shipped with FMT; this sends people to its creator, where it is free. Shoutout included.
         var have = CursorSwap.FindPack() != null;
-        var creator = Ui.Btn(have ? "MOYASH auf ko-fi unterstützen" : "Moga Dark von MOYASH laden", () =>
+        var creator = Ui.Btn(have ? "Moga Cursor Pack (Seite)" : "Moga Dark von MOYASH laden", () =>
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(CursorSwap.PackUrl) { UseShellExecute = true }), have ? "Ghost" : "Primary");
         return Section("Maus-Cursor",
             check,
