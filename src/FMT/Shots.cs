@@ -122,7 +122,7 @@ internal static class Shots
         var rnd = new Random(7);
         var times = Enumerable.Range(0, 120).Select(i => i % 37 == 0 ? 31 + rnd.NextDouble() * 6 : 8 + rnd.NextDouble() * 2).ToArray();
         var fpsCard = new FpsCard();
-        fpsCard.Show(new FrameStats(112, times.Average(), 31, times.Max(), "D3D9", times));
+        fpsCard.Show(new FrameStats(112, times.Average(), 31, times.Max(), "D3D9", times), 14);
         fpsCard.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
         fpsCard.Arrange(new Rect(fpsCard.DesiredSize));
         fpsCard.UpdateLayout();

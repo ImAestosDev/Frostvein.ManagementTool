@@ -10,6 +10,7 @@ public sealed class FpsCard : Border
     private readonly TextBlock _fps = Field(30, 14);
     private readonly TextBlock _low = Field(24, 12);
     private readonly TextBlock _ms = Field(34, 12);
+    private readonly TextBlock _ping = Field(28, 12);
 
     private static TextBlock Field(double width, double size)
     {
@@ -27,14 +28,15 @@ public sealed class FpsCard : Border
         SetResourceReference(BackgroundProperty, "Bg");
         SetResourceReference(BorderBrushProperty, "Line");
         SetResourceReference(CornerRadiusProperty, "CornerSmall");
-        _low.SetResourceReference(TextBlock.ForegroundProperty, "Text");
         _low.TextAlignment = TextAlignment.Left;
-        _ms.SetResourceReference(TextBlock.ForegroundProperty, "Text");
+        _ms.SetResourceReference(TextBlock.ForegroundProperty, "Ink");
         Child = Ui.Row(0,
             _fps, Label(" FPS"),
             Label("1%"), _low,
-            _ms, Label(" ms"));
-        Show(FrameStats.None);
+            _ms, Label(" ms"),
+            Label("Ping"), _ping);
+        _ping.TextAlignment = TextAlignment.Left;
+        Show(FrameStats.None, null);
     }
 
     private static TextBlock Label(string text)
@@ -45,16 +47,23 @@ public sealed class FpsCard : Border
         return t;
     }
 
-    public void Show(FrameStats s)
+    private static string Rate(double fps) => fps >= 55 ? "Positive" : fps >= 30 ? "Accent" : "Negative";
+
+    // Ping in ms to the game server, null while unknown.
+    public void Show(FrameStats s, long? ping)
     {
+        _ping.Text = ping is { } p ? p.ToString(German) : "–";
+        _ping.SetResourceReference(TextBlock.ForegroundProperty, ping is not { } v ? "Muted" : v < 60 ? "Positive" : v < 120 ? "Accent" : "Negative");
         if (!s.HasData)
         {
             _fps.Text = _low.Text = _ms.Text = "–";
             _fps.SetResourceReference(TextBlock.ForegroundProperty, "Muted");
+            _low.SetResourceReference(TextBlock.ForegroundProperty, "Muted");
             return;
         }
         _fps.Text = s.Fps.ToString("0", German);
-        _fps.SetResourceReference(TextBlock.ForegroundProperty, s.Fps >= 55 ? "Positive" : s.Fps >= 30 ? "Accent" : "Negative");
+        _fps.SetResourceReference(TextBlock.ForegroundProperty, Rate(s.Fps));
+        _low.SetResourceReference(TextBlock.ForegroundProperty, Rate(s.LowFps));
         _low.Text = s.LowFps.ToString("0", German);
         _ms.Text = s.AvgMs.ToString("0.0", German);
     }
@@ -63,6 +72,7 @@ public sealed class FpsOverlay : GameOverlay
 {
     private readonly FpsCard _card = new();
     private readonly FrameCounter _frames;
+    private readonly GamePing _ping = new();
 
     public FpsOverlay(AppState state, GameWindowTracker tracker, PacketCapture capture, FrameCounter frames)
         : base(state, tracker, capture, "FMT FPS")
@@ -83,6 +93,7 @@ public sealed class FpsOverlay : GameOverlay
     protected override void ShowCard()
     {
         if (!IsVisible) return;
-        _card.Show(_frames.Stats(GamePid()));
+        var pid = GamePid();
+        _card.Show(_frames.Stats(pid), _ping.For(pid));
     }
 }
